@@ -60,7 +60,7 @@ export class BundleBuilder {
     tx.sign([args.payer]);
 
     return {
-      serializedTransactions: [Buffer.from(tx.serialize()).toString('base64')],
+      transactions: [tx],
       signatures: [bs58.encode(Buffer.from(tx.signatures[0]!))],
       tipLamports: args.tipLamports,
       tipAccount: args.tipAccount,

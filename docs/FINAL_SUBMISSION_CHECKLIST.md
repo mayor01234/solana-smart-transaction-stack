@@ -5,7 +5,11 @@ Do not submit until every item below is complete.
 ## Required evidence
 
 - [ ] `ALLOW_DRY_RUN=false`
+- [ ] SolInfra `SOLANA_RPC_URL`, `SOLANA_WS_URL`, and `YELLOWSTONE_GRPC_URL` are set
+- [ ] `ANTHROPIC_API_KEY` is set and `AI_DECISION_MODE=llm` (so records show `engine: llm` reasoning)
+- [ ] `JITO_TRANSPORT=grpc` (official jito-ts SDK) — or `jsonrpc` if gRPC is unavailable in your env
 - [ ] `PUBLIC_ARCHITECTURE_URL` is set to a public Notion/Google Doc/Figma/static page
+- [ ] `npm run build` succeeds (clean `tsc`)
 - [ ] `npm run challenge:doctor` passes without failed checks
 - [ ] `npm run watch:slots` shows live Yellowstone slot updates
 - [ ] `npm run challenge:first-place` completes

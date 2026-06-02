@@ -1,5 +1,5 @@
 import { loadConfig } from '../config.js';
-import { JitoRpcClient } from '../jito/jito-rpc-client.js';
+import { createJitoClient } from '../jito/jito-client-factory.js';
 import { TipAccountFeed } from '../jito/tip-account-feed.js';
 import { YellowstoneClientFactory } from '../geyser/yellowstone-client.js';
 
@@ -10,9 +10,11 @@ checks.push({ name: 'Dry-run disabled for submission', status: config.ALLOW_DRY_
 checks.push({ name: 'Public architecture URL', status: config.PUBLIC_ARCHITECTURE_URL ? 'pass' : 'warn', detail: config.PUBLIC_ARCHITECTURE_URL || 'Set PUBLIC_ARCHITECTURE_URL after publishing docs/ARCHITECTURE_PUBLIC.md' });
 checks.push({ name: 'Yellowstone URL configured', status: config.YELLOWSTONE_GRPC_URL ? 'pass' : 'fail', detail: config.YELLOWSTONE_GRPC_URL });
 checks.push({ name: 'Jito block engine URL configured', status: config.JITO_BLOCK_ENGINE_URL ? 'pass' : 'fail', detail: config.JITO_BLOCK_ENGINE_URL });
+checks.push({ name: 'AI decision mode', status: config.AI_DECISION_MODE === 'llm' && !config.ANTHROPIC_API_KEY ? 'warn' : 'pass', detail: config.AI_DECISION_MODE === 'llm' ? (config.ANTHROPIC_API_KEY ? `llm (${config.ANTHROPIC_MODEL})` : 'llm mode set but ANTHROPIC_API_KEY missing; will fall back to heuristic') : 'heuristic (no external LLM)' });
 
 try {
-  const jito = new JitoRpcClient(config);
+  const jito = await createJitoClient(config);
+  checks.push({ name: 'Jito transport', status: 'pass', detail: jito.transport });
   const accounts = await jito.getTipAccounts();
   checks.push({ name: 'Jito tip accounts reachable', status: accounts.length ? 'pass' : 'fail', detail: `${accounts.length} accounts returned` });
   const feed = new TipAccountFeed(config, jito);
@@ -33,4 +35,5 @@ try {
 }
 
 for (const c of checks) console.log(`${c.status === 'pass' ? '✅' : c.status === 'warn' ? '⚠️' : '❌'} ${c.name}: ${c.detail}`);
-if (checks.some((c) => c.status === 'fail')) process.exitCode = 1;
+// Force exit: the gRPC searcher client keeps a connection open that would otherwise hang the process.
+process.exit(checks.some((c) => c.status === 'fail') ? 1 : 0);

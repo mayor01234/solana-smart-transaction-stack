@@ -1,6 +1,6 @@
 import type { AppConfig } from '../config.js';
 import type { TipSnapshot } from '../types.js';
-import { JitoRpcClient } from './jito-rpc-client.js';
+import type { JitoBundleClient } from './jito-bundle-client.js';
 
 function numeric(value: unknown): number | undefined {
   if (value === null || value === undefined) return undefined;
@@ -10,7 +10,7 @@ function numeric(value: unknown): number | undefined {
 
 export class TipAccountFeed {
   private lastSnapshot?: TipSnapshot;
-  constructor(private readonly config: AppConfig, private readonly jito: JitoRpcClient) {}
+  constructor(private readonly config: AppConfig, private readonly jito: JitoBundleClient) {}
 
   async fetch(): Promise<TipSnapshot> {
     const [tipAccounts, tipFloor] = await Promise.all([this.jito.getTipAccounts(), this.fetchTipFloor()]);

@@ -1,9 +1,16 @@
+import type { VersionedTransaction } from '@solana/web3.js';
 import type { AppConfig } from '../config.js';
+import type { JitoBundleClient, NextLeaderInfo } from './jito-bundle-client.js';
 
-export class JitoRpcClient {
+/**
+ * Jito JSON-RPC adapter (over fetch). Zero extra dependencies; always available.
+ * Used when JITO_TRANSPORT=jsonrpc, or as a fallback if the gRPC client fails to initialise.
+ */
+export class JitoJsonRpcClient implements JitoBundleClient {
+  readonly transport = 'jsonrpc' as const;
   constructor(private readonly config: AppConfig) {}
 
-  async request<T>(method: string, params: unknown[] = []): Promise<T> {
+  private async request<T>(method: string, params: unknown[] = []): Promise<T> {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (this.config.JITO_AUTH_UUID) headers['x-jito-auth'] = this.config.JITO_AUTH_UUID;
     const res = await fetch(this.urlForMethod(method), {
@@ -21,20 +28,25 @@ export class JitoRpcClient {
     return this.request<string[]>('getTipAccounts');
   }
 
-  async sendBundle(serializedTransactions: string[]): Promise<string> {
-    return this.request<string>('sendBundle', [serializedTransactions, { encoding: 'base64' }]);
+  async sendBundle(transactions: VersionedTransaction[]): Promise<string> {
+    const serialized = transactions.map((tx) => Buffer.from(tx.serialize()).toString('base64'));
+    return this.request<string>('sendBundle', [serialized, { encoding: 'base64' }]);
   }
 
-  async getInflightBundleStatuses(bundleIds: string[]): Promise<any> {
-    return this.request<any>('getInflightBundleStatuses', [bundleIds]);
+  async getInflightBundleStatuses(bundleIds: string[]): Promise<unknown> {
+    return this.request('getInflightBundleStatuses', [bundleIds]);
   }
 
-  async getBundleStatuses(bundleIds: string[]): Promise<any> {
-    return this.request<any>('getBundleStatuses', [bundleIds]);
+  async getBundleStatuses(bundleIds: string[]): Promise<unknown> {
+    return this.request('getBundleStatuses', [bundleIds]);
   }
 
-  async getNextScheduledLeader(): Promise<{ currentSlot?: number; nextLeaderSlot?: number; nextLeaderIdentity?: string }> {
-    return this.request('getNextScheduledLeader');
+  async getNextScheduledLeader(): Promise<NextLeaderInfo> {
+    return this.request<NextLeaderInfo>('getNextScheduledLeader');
+  }
+
+  close(): void {
+    /* no persistent connection */
   }
 
   private urlForMethod(method: string): string {

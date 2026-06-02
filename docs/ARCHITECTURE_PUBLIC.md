@@ -87,19 +87,22 @@ src/geyser/transaction-stream.ts
 
 Responsibilities:
 
-- Subscribe to live slots and transactions.
-- Maintain current slot from stream data.
+- Subscribe to live slots (with processed/confirmed/finalized status) and transactions.
+- Maintain current, confirmed, and finalized slots from stream data.
 - Watch submitted signatures for processed landing.
-- Reconnect automatically.
-- Emit backpressure warnings.
-- Avoid relying on RPC polling alone for landing confirmation.
+- Drive commitment confirmation from the slot-status stream (`src/core/commitment-tracker.ts`).
+- Reconnect automatically with ping and backpressure controls.
+- Never rely on RPC polling for landing confirmation (an RPC signature *subscription* is only a fallback).
 
 ### 2. Jito Bundle Layer
 
 Files:
 
 ```text
-src/jito/jito-rpc-client.ts
+src/jito/jito-bundle-client.ts      (transport-agnostic interface)
+src/jito/jito-grpc-client.ts        (official jito-ts searcher SDK, default)
+src/jito/jito-jsonrpc-client.ts     (JSON-RPC fallback transport)
+src/jito/jito-client-factory.ts
 src/jito/bundle-builder.ts
 src/jito/tip-account-feed.ts
 src/jito/dynamic-tip-estimator.ts
@@ -110,10 +113,14 @@ Responsibilities:
 
 - Discover live Jito tip accounts.
 - Fetch live tip-floor data.
-- Detect the next scheduled Jito leader.
+- Detect the next scheduled Jito leader (`getNextScheduledLeader`).
 - Build versioned transactions with a Jito tip transfer.
-- Submit bundles via `sendBundle`.
-- Monitor inflight/final bundle status.
+- Submit bundles via the official **jito-ts** searcher client (`sendBundle`), with a JSON-RPC
+  fallback selectable by `JITO_TRANSPORT`.
+- Subscribe to real-time bundle results (`onBundleResult`) and fall back to inflight/final status.
+
+The orchestrator depends only on the `JitoBundleClient` interface, so the transport can be switched
+with one environment variable without touching execution logic.
 
 ### 3. AI Operational Agent
 
@@ -126,15 +133,32 @@ src/agents/retry-reasoning-agent.ts
 src/agents/transaction-decision-agent.ts
 ```
 
-The AI layer owns three real operational decisions:
+The AI agent owns one real operational decision per attempt — the action and the tip — and the
+bounty's required fault path (autonomous retry after blockhash expiry) is driven by its reasoning,
+not hardcoded logic.
 
-| Decision family | What it controls |
+When `AI_DECISION_MODE=llm`, an Anthropic Claude model is the decision engine. It receives a
+structured snapshot of live signals and returns, through a forced tool-call schema:
+
+- the `action` (submit / hold / retry-refresh-blockhash / retry-increase-tip / retry-same-tip / abort),
+- the `tipLamports`,
+- a `landingProbability`, and
+- natural-language `reasoning` that is stored verbatim in every lifecycle record (visible reasoning).
+
+Three deterministic providers supply the model with evidence (they no longer make the final call):
+
+| Signal provider | What it analyzes |
 |---|---|
-| Tip intelligence | How much to tip using live tip percentiles and current conditions. |
-| Submission timing | Submit now, hold for Jito leader, or abort when conditions are poor. |
-| Retry reasoning | Refresh blockhash, increase tip, retry same tip, hold, or abort after failure. |
+| Tip intelligence | Live tip percentiles, congestion, and leader urgency. |
+| Submission timing | Leader-window position and landing probability. |
+| Retry reasoning | The prior failure class and retry budget. |
 
-Each lifecycle record stores the agent's module-level evidence and rationale. This is not a hidden sequential wrapper; the agent's decision changes real execution behavior.
+Deterministic **guardrails** then bound the model: the tip is clamped to the configured range, the
+retry budget is enforced, and the action is kept coherent with attempt state. `guardrailAdjusted`
+records whenever the model's raw output was bounded. Each record stores the `promptHash` of the exact
+prompt, the model id, and the LLM latency. If the LLM is unavailable, the agent degrades to a
+transparent heuristic engine (`engine: heuristic`) so a run is never blocked. This is not a sequential
+wrapper — the agent's reasoning changes real execution behavior.
 
 ### 4. Failure Handling Strategy
 
@@ -203,12 +227,14 @@ raw Jito status / live tip percentiles
 
 | Decision | Why it matters |
 |---|---|
-| Yellowstone/Geyser stream | Lower-latency stream observations and challenge-required live infrastructure. |
-| Jito bundles | Required by the challenge and appropriate for low-latency atomic submission. |
+| SolInfra RPC + Yellowstone (sponsor) | The live infrastructure the stack runs on; low-latency stream observations without polling. |
+| Official jito-ts SDK (gRPC) | Deepest Jito integration (native bundle submission + result streaming); JSON-RPC kept as a resilient fallback. |
+| Yellowstone slot-status commitment | Confirmed/finalized are observed from the stream, not RPC polling, matching the challenge requirement. |
 | Dynamic tip estimator | Avoids hardcoded tips and adapts to live tip floors and network conditions. |
-| Separate AI layer | Makes the operational decision-maker auditable and replaceable. |
+| LLM agent + deterministic guardrails | The model owns the decision with visible reasoning; guardrails bound tips and retries for safety. No AI vendor is a bounty sponsor, so the LLM rivals nothing. |
+| Separate AI layer | Makes the operational decision-maker auditable and replaceable (vendor-agnostic provider interface). |
 | Evidence-first design | Judges can cross-check signatures, slots, timestamps, and failure classes. |
-| Fault injection | Demonstrates that failure handling works under controlled adverse conditions. |
+| Fault injection | Demonstrates failure handling under controlled adverse conditions (blockhash expiry is the mandated showcase). |
 | First-place score gate | Prevents submitting a technically incomplete or evidence-poor run. |
 
 ## First-Place Evidence Target

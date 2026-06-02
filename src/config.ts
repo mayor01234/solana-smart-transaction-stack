@@ -2,44 +2,89 @@ import 'dotenv/config';
 import fs from 'node:fs';
 import { z } from 'zod';
 
+// Treat an empty env value (e.g. `PUBLIC_ARCHITECTURE_URL=`) as unset so optional URLs don't fail
+// `.url()` validation before they are filled in.
+const optionalUrl = () => z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional());
+
+/**
+ * Configuration for the AgentArena smart transaction stack.
+ *
+ * Infrastructure is provided by the bounty sponsor SolInfra (RPC nodes + Yellowstone gRPC).
+ * Bundles go through Jito. The only non-sponsor dependency is the LLM used by the AI agent;
+ * the bounty names no AI provider, so the LLM does not rival any sponsor and is fully optional
+ * (the stack degrades to a transparent heuristic engine when no key is configured).
+ */
 const ConfigSchema = z.object({
   TARGET_CLUSTER: z.string().default('mainnet-beta'),
+
+  // SolInfra (sponsor) RPC + WebSocket endpoints.
   SOLANA_RPC_URL: z.string().url(),
-  SOLANA_WS_URL: z.string().url().optional(),
+  SOLANA_WS_URL: optionalUrl(),
+
+  // SolInfra (sponsor) Yellowstone/Geyser gRPC stream.
   YELLOWSTONE_GRPC_URL: z.string().url(),
   YELLOWSTONE_TOKEN: z.string().optional().default(''),
   YELLOWSTONE_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('processed'),
   GEYSER_PING_INTERVAL_MS: z.coerce.number().int().positive().default(15_000),
   GEYSER_MAX_BUFFERED_EVENTS: z.coerce.number().int().positive().default(20_000),
+
+  // Jito block engine. JSON-RPC base URL is also used to derive the gRPC host when the
+  // dedicated gRPC URL is not set explicitly.
   JITO_BLOCK_ENGINE_URL: z.string().url(),
+  JITO_BLOCK_ENGINE_GRPC_URL: z.string().optional().default(''),
+  JITO_TRANSPORT: z.enum(['grpc', 'jsonrpc']).default('grpc'),
   JITO_TIP_FLOOR_URL: z.string().url().default('https://bundles.jito.wtf/api/v1/bundles/tip_floor'),
   JITO_AUTH_UUID: z.string().optional().default(''),
+  JITO_AUTH_KEYPATH: z.string().optional().default(''),
   JITO_REGION: z.string().default('mainnet'),
   JITO_LEADER_WINDOW_MAX_SLOTS: z.coerce.number().int().positive().default(3),
   JITO_LEADER_HOLD_MAX_MS: z.coerce.number().int().positive().default(15_000),
+
+  // Payer.
   KEYPAIR_PATH: z.string(),
+
+  // Tip policy. Final tips are dynamically selected from live data and network state;
+  // these are guardrails only, never hardcoded submitted values.
   TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(1_000),
   TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(5_000_000),
   TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(75),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
+
+  // Lifecycle windows.
   LIFECYCLE_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
   CONFIRMED_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   FINALIZED_TIMEOUT_MS: z.coerce.number().int().positive().default(180_000),
+  // Confirm landing from the Yellowstone slot-status stream (true) in addition to the
+  // RPC signature subscription. RPC polling is never used.
+  USE_STREAM_COMMITMENT: z.coerce.boolean().default(true),
   EVIDENCE_DIR: z.string().default('./evidence'),
-  AI_DECISION_MODE: z.enum(['local', 'llm_assisted']).default('local'),
-  PUBLIC_ARCHITECTURE_URL: z.string().url().optional().default(''),
-  FIRST_PLACE_MIN_SCORE: z.coerce.number().int().min(0).max(100).default(94),
-  FIRST_PLACE_TARGET_RECORDS: z.coerce.number().int().min(10).default(25),
-  FIRST_PLACE_TARGET_FAILURES: z.coerce.number().int().min(2).default(5),
+
+  // AI agent. The agent owns the operational decision; the LLM produces the reasoning and
+  // the action, and deterministic guardrails enforce safety (tip clamps, retry caps).
+  AI_DECISION_MODE: z.enum(['heuristic', 'llm']).default('llm'),
+  ANTHROPIC_API_KEY: z.string().optional().default(''),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
+  AI_LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  AI_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(1_024),
   AI_RISK_TOLERANCE: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
   AI_MAX_RETRY_ATTEMPTS: z.coerce.number().int().min(0).max(10).default(3),
   AI_ALLOW_HOLD: z.coerce.boolean().default(true),
   AI_MIN_LANDING_PROBABILITY: z.coerce.number().min(0).max(1).default(0.72),
+
+  // First-place scoring gate.
+  PUBLIC_ARCHITECTURE_URL: optionalUrl().default(''),
+  FIRST_PLACE_MIN_SCORE: z.coerce.number().int().min(0).max(100).default(94),
+  FIRST_PLACE_TARGET_RECORDS: z.coerce.number().int().min(10).default(25),
+  FIRST_PLACE_TARGET_FAILURES: z.coerce.number().int().min(2).default(5),
+  REQUIRE_PUBLIC_ARCHITECTURE_URL_FOR_SCORE: z.coerce.boolean().default(true),
+
+  // Demo payload.
   DEMO_MEMO_PREFIX: z.string().default('AgentArena-Superteam-Bundle'),
   DEMO_BUNDLE_TX_COUNT: z.coerce.number().int().min(1).max(5).default(1),
+
+  // Local testing only. Do not submit dry-run evidence.
   ALLOW_DRY_RUN: z.coerce.boolean().default(false),
   ALLOW_EXAMPLE_EVIDENCE: z.coerce.boolean().default(false),
-  REQUIRE_PUBLIC_ARCHITECTURE_URL_FOR_SCORE: z.coerce.boolean().default(true),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
@@ -52,4 +97,11 @@ export function loadConfig(): AppConfig {
   }
   fs.mkdirSync(parsed.data.EVIDENCE_DIR, { recursive: true });
   return parsed.data;
+}
+
+/** Derive the Jito gRPC host (no scheme) used by the jito-ts searcher client. */
+export function jitoGrpcEndpoint(config: AppConfig): string {
+  const explicit = config.JITO_BLOCK_ENGINE_GRPC_URL.trim();
+  const raw = explicit || config.JITO_BLOCK_ENGINE_URL;
+  return raw.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 }

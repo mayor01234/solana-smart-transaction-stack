@@ -24,7 +24,7 @@ const runId = uuidv4();
 const slotStream = new SlotStream(config);
 const txStream = new TransactionStream(config);
 const store = new LifecycleStore(config);
-const orchestrator = new BundleOrchestrator(config, txStream, store);
+const orchestrator = await BundleOrchestrator.create(config, txStream, slotStream, store);
 
 let latestSlot = 0;
 slotStream.on('slot', (slot) => (latestSlot = slot.slot));
@@ -45,6 +45,7 @@ for (let i = 0; i < count; i += 1) {
 store.exportJson();
 store.exportMarkdown();
 store.exportSummary();
+orchestrator.close();
 logger.info({ runId }, 'Challenge run complete.');
 process.exit(0);
 
