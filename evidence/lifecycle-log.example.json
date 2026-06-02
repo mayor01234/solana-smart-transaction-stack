@@ -1,0 +1,31 @@
+[
+  {
+    "note": "Example schema only. Do not submit this as challenge evidence.",
+    "runId": "example-run",
+    "attemptId": "example-attempt",
+    "intent": "normal",
+    "bundleId": "example-bundle-id",
+    "signatures": ["example-signature"],
+    "submittedAt": "2026-05-29T00:00:00.000Z",
+    "processedAt": "2026-05-29T00:00:00.250Z",
+    "confirmedAt": "2026-05-29T00:00:01.300Z",
+    "finalizedAt": "2026-05-29T00:00:08.000Z",
+    "submittedSlot": 0,
+    "processedSlot": 0,
+    "confirmedSlot": 1,
+    "finalizedSlot": 32,
+    "latencyMs": {
+      "submittedToProcessed": 250,
+      "processedToConfirmed": 1050,
+      "confirmedToFinalized": 6700,
+      "submittedToFinalized": 8000
+    },
+    "tipLamports": 1000,
+    "tipAccount": "example-tip-account",
+    "failureClass": null,
+    "agentDecision": {
+      "action": "submit_now",
+      "reasonSummary": "Example only. Real reason traces are generated during live runs."
+    }
+  }
+]

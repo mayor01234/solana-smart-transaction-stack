@@ -1,0 +1,18 @@
+flowchart LR
+    Y[Yellowstone/Geyser gRPC] --> S[Slot Stream]
+    Y --> X[Transaction Stream]
+    S --> L[Jito Leader Window Detector]
+    J1[Jito getTipAccounts] --> T[Tip Account Feed]
+    J2[Jito Tip Floor API] --> T
+    T --> E[Dynamic Tip Estimator]
+    S --> E
+    L --> A[AI Transaction Decision Agent]
+    E --> A
+    A --> B[Blockhash Manager]
+    B --> BB[Jito Bundle Builder]
+    BB --> JE[Jito Block Engine sendBundle]
+    X --> LT[Stream Lifecycle Tracker]
+    LT --> LS[Lifecycle Store]
+    LS --> FC[Failure Classifier]
+    FC --> A
+    LS --> EV[Evidence Exporter]

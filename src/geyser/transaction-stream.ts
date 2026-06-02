@@ -1,0 +1,8 @@
+import { EventEmitter } from 'node:events';
+import bs58 from 'bs58';
+import type { AppConfig } from '../config.js';
+import { logger } from '../logger.js';
+import { ReconnectingYellowstoneStream } from './reconnecting-stream.js';
+import { YellowstoneClientFactory } from './yellowstone-client.js';
+export interface ObservedTransaction { signature:string; slot:number; err?:unknown; observedAt:number; }
+export class TransactionStream extends EventEmitter { private watchedSignatures=new Set<string>(); private stream?:ReconnectingYellowstoneStream; constructor(private readonly config:AppConfig){super();} watch(signature:string){this.watchedSignatures.add(signature);} unwatch(signature:string){this.watchedSignatures.delete(signature);} async start(){const factory=new YellowstoneClientFactory(this.config); this.stream=new ReconnectingYellowstoneStream(this.config,factory,()=>({...factory.baseSubscribeRequest(),transactions:{agentarena:{vote:false,failed:true,accountInclude:[],accountExclude:[],accountRequired:[]}}}),'transaction-stream'); this.stream.on('data',(data:any)=>{const tx=data?.transaction?.transaction??data?.transaction; const rawSig=tx?.signature??tx?.transaction?.signatures?.[0]; if(!rawSig)return; const signature=typeof rawSig==='string'?rawSig:bs58.encode(Buffer.from(rawSig)); if(!this.watchedSignatures.has(signature))return; this.emit('transaction',{signature,slot:Number(data?.transaction?.slot??data?.slot??0),err:tx?.meta?.err,observedAt:Date.now()} satisfies ObservedTransaction);}); this.stream.on('backpressure',(e)=>logger.warn(e,'Transaction stream backpressure.')); this.stream.on('error',(error)=>logger.warn({error},'Transaction stream error.')); await this.stream.start();} stop(){this.stream?.stop();} }

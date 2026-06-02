@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant O as Orchestrator
+    participant J as Jito Block Engine
+    participant S as Stream Tracker
+    participant F as Failure Classifier
+    participant A as AI Retry Agent
+    participant B as Blockhash Manager
+    participant T as Tip Estimator
+
+    O->>J: sendBundle
+    J-->>O: bundle_id
+    S-->>O: no processed/confirmed/finalized progression
+    O->>F: classify timeout/status/error
+    F-->>A: expired_blockhash or fee_too_low or leader_skipped
+    A->>B: refresh blockhash if needed
+    A->>T: reprice tip if needed
+    A-->>O: retry/hold/abort decision
+    O->>J: resubmit rebuilt bundle
