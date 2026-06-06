@@ -14,7 +14,6 @@ Built for the **SuperteamNG × SolInfra Advanced Infrastructure Challenge**. Thi
 
 ## Table of contents
 
-- [Why this is a first-place submission](#why-this-is-a-first-place-submission)
 - [Bounty requirement compliance](#bounty-requirement-compliance)
 - [Architecture](#architecture)
 - [How the AI agent owns the decision](#how-the-ai-agent-owns-the-decision)
@@ -31,20 +30,6 @@ Built for the **SuperteamNG × SolInfra Advanced Infrastructure Challenge**. Thi
 - [License](#license)
 
 ---
-
-## Why this is a first-place submission
-
-| | Bounty minimum | This stack |
-|---|---|---|
-| Bundle records | 10 | **25** (configurable to 50) |
-| Failure cases | 2 | **5** controlled, all classified |
-| AI decisions owned | 1 | **3** families (tip, timing, retry) — LLM-owned with visible reasoning |
-| Landing confirmation | subscriptions | **Yellowstone slot-status stream** (not RPC polling) |
-| Jito integration | bundles | **official jito-ts SDK** + real-time bundle-result subscription |
-| README answers | 3 | **3**, backed by measured p50/p90 latency from the run |
-| Architecture doc | required | doc + system/data-flow/failure diagrams |
-
-The repo **fails its own scoring gate** if evidence is weak (dry-run, too few records, missing AI traces) — that strictness is intentional.
 
 ## Bounty requirement compliance
 
