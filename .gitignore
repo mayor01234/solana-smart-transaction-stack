@@ -4,8 +4,4 @@ dist/
 .DS_Store
 *.log
 coverage/
-evidence/lifecycle-log.jsonl
-evidence/lifecycle-log.json
-evidence/lifecycle-log.md
-evidence/run-summary.json
 keys/*.json
