@@ -8,8 +8,11 @@ import { jitoGrpcEndpoint } from '../config.js';
 import { loadKeypair } from '../core/keypair.js';
 import { logger } from '../logger.js';
 import type { BundleResultUpdate, JitoBundleClient, NextLeaderInfo } from './jito-bundle-client.js';
+import { RateLimiter } from './rate-limiter.js';
 
 const MAX_BUNDLE_TX = 5;
+// Public Jito block engine allows ~1 txn request/second; pace calls to stay under it.
+const MIN_CALL_INTERVAL_MS = 1100;
 
 /**
  * gRPC adapter over the official jito-ts searcher client.
@@ -19,6 +22,7 @@ const MAX_BUNDLE_TX = 5;
 export class JitoGrpcClient implements JitoBundleClient {
   readonly transport = 'grpc' as const;
   private readonly client: SearcherClient;
+  private readonly limiter = new RateLimiter(MIN_CALL_INTERVAL_MS);
 
   constructor(private readonly config: AppConfig) {
     const endpoint = jitoGrpcEndpoint(config);
@@ -33,28 +37,34 @@ export class JitoGrpcClient implements JitoBundleClient {
   }
 
   async getTipAccounts(): Promise<string[]> {
-    const res = await this.client.getTipAccounts();
-    if (!res.ok) throw new Error(`getTipAccounts failed: ${String(res.error)}`);
-    return res.value;
+    return this.limiter.run(async () => {
+      const res = await this.client.getTipAccounts();
+      if (!res.ok) throw new Error(`getTipAccounts failed: ${String(res.error)}`);
+      return res.value;
+    });
   }
 
   async sendBundle(transactions: VersionedTransaction[]): Promise<string> {
-    // Cross-version web3.js bridge (see constructor note): VersionedTransaction is structurally
-    // identical between the duplicated web3.js copies.
-    const bundle = new Bundle(transactions as any, MAX_BUNDLE_TX);
-    const res = await this.client.sendBundle(bundle);
-    if (!res.ok) throw new Error(`sendBundle failed: ${String(res.error)}`);
-    return res.value;
+    return this.limiter.run(async () => {
+      // Cross-version web3.js bridge (see constructor note): VersionedTransaction is structurally
+      // identical between the duplicated web3.js copies.
+      const bundle = new Bundle(transactions as any, MAX_BUNDLE_TX);
+      const res = await this.client.sendBundle(bundle);
+      if (!res.ok) throw new Error(`sendBundle failed: ${String(res.error)}`);
+      return res.value;
+    });
   }
 
   async getNextScheduledLeader(): Promise<NextLeaderInfo> {
-    const res = await this.client.getNextScheduledLeader();
-    if (!res.ok) throw new Error(`getNextScheduledLeader failed: ${String(res.error)}`);
-    return {
-      currentSlot: res.value.currentSlot,
-      nextLeaderSlot: res.value.nextLeaderSlot,
-      nextLeaderIdentity: res.value.nextLeaderIdentity,
-    };
+    return this.limiter.run(async () => {
+      const res = await this.client.getNextScheduledLeader();
+      if (!res.ok) throw new Error(`getNextScheduledLeader failed: ${String(res.error)}`);
+      return {
+        currentSlot: res.value.currentSlot,
+        nextLeaderSlot: res.value.nextLeaderSlot,
+        nextLeaderIdentity: res.value.nextLeaderIdentity,
+      };
+    });
   }
 
   subscribeBundleResult(onUpdate: (u: BundleResultUpdate) => void, onError: (e: Error) => void): () => void {

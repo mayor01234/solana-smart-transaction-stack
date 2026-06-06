@@ -1,6 +1,7 @@
 import type { VersionedTransaction } from '@solana/web3.js';
 import type { AppConfig } from '../config.js';
 import type { JitoBundleClient, NextLeaderInfo } from './jito-bundle-client.js';
+import { RateLimiter } from './rate-limiter.js';
 
 /**
  * Jito JSON-RPC adapter (over fetch). Zero extra dependencies; always available.
@@ -8,20 +9,24 @@ import type { JitoBundleClient, NextLeaderInfo } from './jito-bundle-client.js';
  */
 export class JitoJsonRpcClient implements JitoBundleClient {
   readonly transport = 'jsonrpc' as const;
+  // Public Jito endpoint allows ~1 request/second; pace calls to stay under it.
+  private readonly limiter = new RateLimiter(1100);
   constructor(private readonly config: AppConfig) {}
 
-  private async request<T>(method: string, params: unknown[] = []): Promise<T> {
-    const headers: Record<string, string> = { 'content-type': 'application/json' };
-    if (this.config.JITO_AUTH_UUID) headers['x-jito-auth'] = this.config.JITO_AUTH_UUID;
-    const res = await fetch(this.urlForMethod(method), {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
+  private request<T>(method: string, params: unknown[] = []): Promise<T> {
+    return this.limiter.run(async () => {
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      if (this.config.JITO_AUTH_UUID) headers['x-jito-auth'] = this.config.JITO_AUTH_UUID;
+      const res = await fetch(this.urlForMethod(method), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
+      });
+      if (!res.ok) throw new Error(`Jito ${method} HTTP ${res.status}: ${await res.text()}`);
+      const json: any = await res.json();
+      if (json.error) throw new Error(`Jito ${method} error: ${JSON.stringify(json.error)}`);
+      return json.result as T;
     });
-    if (!res.ok) throw new Error(`Jito ${method} HTTP ${res.status}: ${await res.text()}`);
-    const json: any = await res.json();
-    if (json.error) throw new Error(`Jito ${method} error: ${JSON.stringify(json.error)}`);
-    return json.result as T;
   }
 
   async getTipAccounts(): Promise<string[]> {

@@ -12,8 +12,16 @@ export class TipAccountFeed {
   private lastSnapshot?: TipSnapshot;
   constructor(private readonly config: AppConfig, private readonly jito: JitoBundleClient) {}
 
+  private cachedTipAccounts?: string[];
+
   async fetch(): Promise<TipSnapshot> {
-    const [tipAccounts, tipFloor] = await Promise.all([this.jito.getTipAccounts(), this.fetchTipFloor()]);
+    // Tip accounts are static per cluster — fetch once and reuse to save a rate-limited Jito call
+    // per attempt. The tip-floor (the dynamic part) is always fetched live.
+    const [tipAccounts, tipFloor] = await Promise.all([
+      this.cachedTipAccounts ? Promise.resolve(this.cachedTipAccounts) : this.jito.getTipAccounts(),
+      this.fetchTipFloor(),
+    ]);
+    this.cachedTipAccounts = tipAccounts;
     const percentileLamports = this.normalizeTipFloor(tipFloor);
     const snapshot: TipSnapshot = {
       fetchedAt: new Date().toISOString(),
