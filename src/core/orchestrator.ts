@@ -6,6 +6,7 @@ import type { AgentDecisionTrace, BundleLifecycleRecord, FailureClass, NetworkSn
 import { TransactionDecisionAgent } from '../agents/transaction-decision-agent.js';
 import { SlotStream } from '../geyser/slot-stream.js';
 import { TransactionStream } from '../geyser/transaction-stream.js';
+import type { PumpfunTradeEvent } from '../geyser/pumpfun-event-stream.js';
 import { BundleBuilder } from '../jito/bundle-builder.js';
 import { DynamicTipEstimator } from '../jito/dynamic-tip-estimator.js';
 import type { BundleResultUpdate, JitoBundleClient } from '../jito/jito-bundle-client.js';
@@ -30,6 +31,8 @@ export interface RunAttemptArgs {
   previousFailureMessage?: string;
   retryAttempt?: number;
   currentSlotFromStream: number;
+  /** Real pump.fun trade this attempt is reacting to (when REACT_TO_LIVE_EVENTS is on). */
+  triggerEvent?: PumpfunTradeEvent;
 }
 
 export class BundleOrchestrator {
@@ -120,9 +123,14 @@ export class BundleOrchestrator {
 
     const selectedTipLamports = args.fault === 'low_tip' ? Math.max(1, Math.floor(decision.selectedTipLamports * 0.01)) : decision.selectedTipLamports;
 
+    const trigger = args.triggerEvent;
+    const memo = trigger
+      ? `${this.config.DEMO_MEMO_PREFIX} run=${args.runId} index=${args.index} attempt=${attemptId} reacting-to-pumpfun mint=${trigger.mint} sig=${trigger.signature}`
+      : `${this.config.DEMO_MEMO_PREFIX} run=${args.runId} index=${args.index} attempt=${attemptId}`;
+
     const build = this.builder.buildDemoBundle({
       payer: this.payer,
-      memo: `${this.config.DEMO_MEMO_PREFIX} run=${args.runId} index=${args.index} attempt=${attemptId}`,
+      memo,
       blockhash: blockhashData.blockhash,
       lastValidBlockHeight: blockhashData.lastValidBlockHeight,
       tipLamports: selectedTipLamports,
@@ -279,6 +287,7 @@ export class BundleOrchestrator {
       leaderWindow: network,
       agentDecision: decision,
       explorerLinks: signatures.map((s) => `https://explorer.solana.com/tx/${s}?cluster=${this.config.TARGET_CLUSTER}`),
+      raw: args.triggerEvent ? { pumpfunTriggerEvent: args.triggerEvent } : undefined,
     };
   }
 

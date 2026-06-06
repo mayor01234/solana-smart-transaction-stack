@@ -17,12 +17,14 @@ Built for the **SuperteamNG × SolInfra Advanced Infrastructure Challenge**. Thi
 - [Bounty requirement compliance](#bounty-requirement-compliance)
 - [Architecture](#architecture)
 - [How the AI agent owns the decision](#how-the-ai-agent-owns-the-decision)
+- [Real live events (pump.fun via Yellowstone gRPC)](#real-live-events-pumpfun-via-yellowstone-grpc)
 - [Stream-based commitment confirmation](#stream-based-commitment-confirmation)
 - [Failure handling & fault injection](#failure-handling--fault-injection)
 - [Lifecycle record schema](#lifecycle-record-schema)
 - [Setup](#setup)
 - [Running it](#running-it)
 - [Evidence & verification](#evidence--verification)
+- [Visual dashboard](#visual-dashboard)
 - [README questions (required answers)](#readme-questions-required-answers)
 - [Project structure](#project-structure)
 - [Design decisions & depth of integration](#design-decisions--depth-of-integration)
@@ -99,6 +101,24 @@ The bounty is explicit: *"Retry decisions must come from the agent itself, not h
 - **Deterministic guardrails** then bound the model for safety: the tip is clamped to the configured range, the retry budget is enforced, and the action is kept coherent with attempt state. Every record flags `guardrailAdjusted` when the model's raw output was bounded.
 - Each record stores `engine` (`llm`/`heuristic`), `model`, `promptHash` (sha256 of the exact prompt), `llmLatencyMs`, and the full `reasoning` — so reasoning is **auditable**, not hidden.
 - No key? The agent **degrades gracefully** to a transparent heuristic engine so a run is never blocked. The LLM is the only non-sponsor dependency, and since the bounty names no AI vendor, it rivals no sponsor.
+
+## Real live events (pump.fun via Yellowstone gRPC)
+
+Beyond a self-driven loop, the stack can **react to real on-chain activity**. A read-only listener
+([`src/geyser/pumpfun-event-stream.ts`](src/geyser/pumpfun-event-stream.ts)) subscribes to the
+Yellowstone transaction stream filtered to the **pump.fun program**, reads each transaction's
+`Program data:` logs, matches the trade-event discriminator, and **decodes live pump.fun trades**
+(mint, SOL/token amounts, buy/sell) — the exact Yellowstone gRPC decode skill from the SolInfra
+training, in TypeScript.
+
+When `REACT_TO_LIVE_EVENTS=true`, each bundle attempt is **triggered by a real decoded trade**, the
+bundle memo references that real `mint`, and the event is stored on the record
+(`raw.pumpfunTriggerEvent`). The payload stays a safe memo+tip transfer — **the stack never trades or
+sends a pump.fun transaction**, so there's no trading risk. Watch it live, standalone:
+
+```bash
+npm run watch:pumpfun   # streams + decodes real pump.fun trades; sends nothing
+```
 
 ## Stream-based commitment confirmation
 
@@ -189,7 +209,9 @@ solana balance --keypair keys/payer.json   # fund with ~0.1–0.2 SOL for tips +
 npm run build            # tsc — must be clean
 npm run challenge:doctor # verifies RPC, Yellowstone, Jito, tip-floor, AI mode
 npm run watch:slots      # confirms the live Yellowstone slot stream
+npm run watch:pumpfun    # (optional) confirms live pump.fun trade decoding
 npm run challenge:first-place   # 25 records + 5 controlled failures, end to end
+npm run challenge:dashboard     # (optional) visualize evidence at http://localhost:4317
 ```
 
 The first-place run is equivalent to:
@@ -217,6 +239,20 @@ verification-report.md  # pass/fail against the evidence policy
 
 **Valid evidence must be live** (`ALLOW_DRY_RUN=false`). Dry-run logs are for local development only — never submit dry-run bundle IDs. The verifier and scorer reject runs with zero records, no classified failures, no AI reasoning traces, or dry-run artifacts.
 
+## Visual dashboard
+
+A read-only local dashboard visualizes the generated evidence (no impact on the core stack):
+
+```bash
+npm run challenge:dashboard   # then open http://localhost:4317
+```
+
+It renders summary cards (records, failures, finalized, unique tips, p50/p90), a tip-per-attempt
+chart, a processed→confirmed latency chart, and a records table where each row expands to show the
+AI reasoning and the real pump.fun event the bundle reacted to. Before a run it renders the example
+evidence (clearly flagged) so the layout is always viewable. Implementation:
+[`src/cli/dashboard.ts`](src/cli/dashboard.ts) + [`dashboard/index.html`](dashboard/index.html).
+
 ## README questions (required answers)
 
 ### 1. What does the delta between `processed_at` and `confirmed_at` tell you about network health at submission time?
@@ -236,12 +272,13 @@ The bundle may be accepted by the block engine but fail to land in the expected 
 ## Project structure
 
 ```text
-src/geyser/   Yellowstone/Geyser stream clients (slot, transaction, reconnect/backpressure)
-src/jito/     jito-ts client + JSON-RPC fallback, bundle builder, tip estimator, leader detector
+src/geyser/   Yellowstone/Geyser clients (slot, transaction, pump.fun event decode, reconnect)
+src/jito/     jito-ts client + JSON-RPC fallback, rate limiter, bundle builder, tip estimator, leader detector
 src/agents/   AI operational decision agent + LLM provider + deterministic signal providers
 src/core/     Orchestrator, lifecycle tracker, commitment tracker, failure classifier, faults
 src/quality/  First-place evidence scoring policy
-src/cli/      Challenge runner, doctor/preflight, evidence exporter/verifier, self-score
+src/cli/      Challenge runner, doctor, watch:slots, watch:pumpfun, dashboard, exporter/verifier/score
+dashboard/    Read-only web dashboard (index.html) for visualizing evidence
 docs/         Architecture doc, Mermaid diagrams, requirement mapping, scorecard, checklist
 evidence/     Generated lifecycle logs and submission evidence
 ```

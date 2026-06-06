@@ -9,6 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "watch:slots": "tsx src/cli/watch-slots.ts",
+    "watch:pumpfun": "tsx src/cli/watch-pumpfun.ts",
+    "challenge:dashboard": "tsx src/cli/dashboard.ts",
     "challenge:run": "tsx src/cli/run-challenge.ts",
     "challenge:score": "tsx src/cli/score-self.ts",
     "challenge:export-evidence": "tsx src/cli/export-evidence.ts",

@@ -78,6 +78,13 @@ const ConfigSchema = z.object({
   FIRST_PLACE_TARGET_FAILURES: z.coerce.number().int().min(2).default(5),
   REQUIRE_PUBLIC_ARCHITECTURE_URL_FOR_SCORE: z.coerce.boolean().default(true),
 
+  // Real live-event source: decode pump.fun trades from the Yellowstone stream and use them to
+  // trigger bundle submissions (read-only; we never trade). REACT_TO_LIVE_EVENTS=false reverts to a
+  // self-driven loop.
+  REACT_TO_LIVE_EVENTS: z.coerce.boolean().default(true),
+  PUMPFUN_PROGRAM_ID: z.string().default('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'),
+  PUMPFUN_EVENT_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+
   // Demo payload.
   DEMO_MEMO_PREFIX: z.string().default('AgentArena-Superteam-Bundle'),
   DEMO_BUNDLE_TX_COUNT: z.coerce.number().int().min(1).max(5).default(1),
