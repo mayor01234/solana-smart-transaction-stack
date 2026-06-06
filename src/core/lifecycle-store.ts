@@ -37,12 +37,14 @@ export class LifecycleStore {
     const lines = [
       '# Lifecycle Log',
       '',
-      '| # | Intent | Bundle ID | Signatures | Submitted Slot | Processed Slot | Confirmed Slot | Finalized Slot | Tip | Failure | AI Action | Explorer |',
-      '|---:|---|---|---|---:|---:|---:|---:|---:|---|---|---|',
+      '| # | Intent | Bundle ID | Sub Slot | Proc Slot | Conf Slot | Final Slot | P→C ms | Sub→Final ms | Tip (lamports) | Failure | AI | Explorer |',
+      '|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|',
     ];
     records.forEach((r, i) => {
+      const d = r.agentDecision ?? ({} as BundleLifecycleRecord['agentDecision']);
+      const ai = `${d.action ?? ''}${d.engine ? ` (${d.engine})` : ''}`;
       lines.push(
-        `| ${i + 1} | ${r.intent} | ${r.bundleId ?? ''} | ${r.signatures.join('<br>')} | ${r.submittedSlot ?? ''} | ${r.processedSlot ?? ''} | ${r.confirmedSlot ?? ''} | ${r.finalizedSlot ?? ''} | ${r.tipLamports} | ${r.failureClass ?? ''} | ${r.agentDecision.action} | ${r.explorerLinks.join('<br>')} |`,
+        `| ${i + 1} | ${r.intent} | ${r.bundleId ?? ''} | ${r.submittedSlot ?? ''} | ${r.processedSlot ?? ''} | ${r.confirmedSlot ?? ''} | ${r.finalizedSlot ?? ''} | ${r.latencyMs.processedToConfirmed ?? ''} | ${r.latencyMs.submittedToFinalized ?? ''} | ${r.tipLamports} | ${r.failureClass ?? ''} | ${ai} | ${r.explorerLinks.join('<br>')} |`,
       );
     });
     fs.writeFileSync(out, lines.join('\n'));
