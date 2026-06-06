@@ -1,7 +1,9 @@
+import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { loadConfig } from '../config.js';
 import { createJitoClient } from '../jito/jito-client-factory.js';
 import { TipAccountFeed } from '../jito/tip-account-feed.js';
 import { YellowstoneClientFactory } from '../geyser/yellowstone-client.js';
+import { loadKeypair } from '../core/keypair.js';
 
 const config = loadConfig();
 const checks: Array<{name:string; status:'pass'|'warn'|'fail'; detail:string}> = [];
@@ -32,6 +34,27 @@ try {
   checks.push({ name: 'Yellowstone client constructible', status: 'pass', detail: 'Client object created. Run npm run watch:slots for stream validation.' });
 } catch (e) {
   checks.push({ name: 'Yellowstone client constructible', status: 'fail', detail: String(e) });
+}
+
+// RPC + WebSocket (RPC Key) and payer funding — required for the funded run.
+try {
+  const conn = new Connection(config.SOLANA_RPC_URL, { commitment: 'processed', wsEndpoint: config.SOLANA_WS_URL });
+  const slot = await conn.getSlot();
+  checks.push({ name: 'RPC reachable (RPC Key)', status: slot > 0 ? 'pass' : 'fail', detail: `current slot ${slot}` });
+  try {
+    const payer = loadKeypair(config.KEYPAIR_PATH);
+    const lamports = await conn.getBalance(payer.publicKey);
+    const sol = lamports / LAMPORTS_PER_SOL;
+    checks.push({
+      name: 'Payer funded',
+      status: lamports <= 0 ? 'fail' : sol >= 0.05 ? 'pass' : 'warn',
+      detail: `${payer.publicKey.toBase58()} = ${sol} SOL`,
+    });
+  } catch (e) {
+    checks.push({ name: 'Payer keypair loadable', status: 'fail', detail: String(e) });
+  }
+} catch (e) {
+  checks.push({ name: 'RPC reachable (RPC Key)', status: 'fail', detail: String(e) });
 }
 
 for (const c of checks) console.log(`${c.status === 'pass' ? '✅' : c.status === 'warn' ? '⚠️' : '❌'} ${c.name}: ${c.detail}`);
