@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-06-07T13:02:54.344Z",
+  "score": 100,
+  "diagnostics": [
+    {
+      "level": "pass",
+      "name": "Evidence volume",
+      "detail": "32 records; target 25, minimum 10."
+    },
+    {
+      "level": "pass",
+      "name": "Failure cases",
+      "detail": "8 classified failures; target 5, minimum 2."
+    },
+    {
+      "level": "pass",
+      "name": "Finalized successful records",
+      "detail": "24 finalized records."
+    },
+    {
+      "level": "pass",
+      "name": "No dry-run evidence",
+      "detail": "0 dry-run records detected."
+    },
+    {
+      "level": "pass",
+      "name": "Dynamic tips",
+      "detail": "7 unique tip values."
+    },
+    {
+      "level": "pass",
+      "name": "AI reasoning traces",
+      "detail": "32/32 records include AI reasoning."
+    },
+    {
+      "level": "pass",
+      "name": "Explorer-verifiable links",
+      "detail": "32/32 records include explorer links."
+    },
+    {
+      "level": "pass",
+      "name": "AI decision families",
+      "detail": "Observed families: retry, timing, tip."
+    },
+    {
+      "level": "pass",
+      "name": "Public architecture URL",
+      "detail": "https://volcano-fowl-b96.notion.site/ARCHITECTURE_PUBLIC-378975109cda80988c39fe0a74103053"
+    }
+  ]
+}

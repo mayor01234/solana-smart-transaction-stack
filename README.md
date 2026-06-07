@@ -257,17 +257,17 @@ evidence (clearly flagged) so the layout is always viewable. Implementation:
 
 ## README questions (required answers)
 
-### 1. What does the delta between `processed_at` and `confirmed_at` tell you about network health at submission time?
+### README Question 1. What does the delta between `processed_at` and `confirmed_at` tell you about network health at submission time?
 
 The `processed → confirmed` delta measures how quickly a transaction moves from first observed execution in a processed slot to a commitment level where the cluster has voted sufficiently on the block. A **small delta** indicates healthy leader execution, fast propagation, low congestion, and normal vote progress. A **large delta** signals congestion, delayed votes, fork uncertainty, leader instability, or poor propagation. This stack records `latencyMs.processedToConfirmed` per bundle and summarizes p50/p90 in `evidence/run-summary.json` (`p50ProcessedToConfirmedMs`, `p90ProcessedToConfirmedMs`).
 
-> **Measured in our run:** p50 `processed→confirmed` = `<paste p50ProcessedToConfirmedMs>` ms, p90 = `<paste p90ProcessedToConfirmedMs>` ms. _(Fill from `evidence/run-summary.json` after the live run — judges score real observations highest.)_
+> **Measured in our live mainnet-beta run (32 records, 24 finalized):** p50 `processed→confirmed` = `332` ms, p90 = `336` ms (avg `333` ms). The tight p50/p90 spread — only 4 ms — indicates a healthy, uncongested cluster with consistent vote progression at submission time. Source: [`evidence/run-summary.json`](evidence/run-summary.json) (`p50ProcessedToConfirmedMs`, `p90ProcessedToConfirmedMs`).
 
-### 2. Why should you never use finalized commitment when fetching a blockhash for a time-sensitive transaction?
+### README Question 2. Why should you never use finalized commitment when fetching a blockhash for a time-sensitive transaction?
 
 A finalized blockhash is older than the freshest processed/confirmed blockhash because finalization intentionally lags the head of the chain. For a time-sensitive Jito bundle, that lag consumes part of the validity window before the bundle is even built or submitted — increasing expiry risk, especially while waiting for a leader window or retrying. This repo fetches blockhashes at `confirmed` ([`src/core/blockhash-manager.ts`](src/core/blockhash-manager.ts), `BLOCKHASH_COMMITMENT`) — fresh enough to maximize the validity window, yet already recognized by the Jito leader's bank (an over-fresh `processed` blockhash can be rejected by a leader that is a slot behind) — and **never** `finalized`. The AI agent rebuilds with a fresh blockhash on expiry.
 
-### 3. What happens to your bundle if the Jito leader skips their slot?
+### README Question 3. What happens to your bundle if the Jito leader skips their slot?
 
 The bundle may be accepted by the block engine but fail to land in the expected slot — remaining unprocessed, showing as failed/not-landed in bundle-result updates, or missing the validity window. This stack detects the absence of commitment progression from the Yellowstone slot-status stream around the intended leader window, classifies it as `leader_skipped_or_bundle_not_forwarded`, and hands the live signals to the AI agent, which reasons about the cause and decides whether to hold for the next Jito leader, refresh the blockhash, reprice the tip, retry, or abort. The retry is **not** a hardcoded flow — the action comes from the agent's reasoning and is captured in each record's `agentDecision` trace.
 

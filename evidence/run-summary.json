@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-06-07T13:02:53.894Z",
+  "totalRecords": 32,
+  "finalizedCount": 24,
+  "failureCount": 8,
+  "failureClasses": {
+    "expired_blockhash": 2,
+    "fee_too_low": 2,
+    "compute_exceeded": 1,
+    "unknown": 3
+  },
+  "averageProcessedToConfirmedMs": 333,
+  "p50ProcessedToConfirmedMs": 332,
+  "p90ProcessedToConfirmedMs": 336,
+  "averageSubmittedToFinalizedMs": 15050,
+  "p50SubmittedToFinalizedMs": 15653,
+  "p90SubmittedToFinalizedMs": 15720,
+  "uniqueTipValues": [
+    2000,
+    200000,
+    234142,
+    460000,
+    575000,
+    600000,
+    742504
+  ],
+  "minTipLamports": 2000,
+  "maxTipLamports": 742504,
+  "aiDecisionFamilies": [
+    "retry",
+    "timing",
+    "tip"
+  ]
+}
