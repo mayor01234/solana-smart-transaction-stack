@@ -1,6 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import { z } from 'zod';
+
+// Make .env the single source of truth: override any stray shell env vars (e.g. a lingering
+// ALLOW_DRY_RUN) so the file you edit is always authoritative — critical for the dry-run gate.
+dotenv.config({ override: true });
 
 // Treat an empty env value (e.g. `PUBLIC_ARCHITECTURE_URL=`) as unset so optional URLs don't fail
 // `.url()` validation before they are filled in.
