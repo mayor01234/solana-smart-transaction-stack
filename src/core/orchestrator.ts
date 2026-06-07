@@ -197,6 +197,16 @@ export class BundleOrchestrator {
       };
       logger.info({ bundleId: record.bundleId, signatures: record.signatures, tip: record.tipLamports, engine: decision.engine }, 'Bundle submitted.');
 
+      // Dual submission (Helius-Sender style): also broadcast the signed tx via SolInfra's staked RPC
+      // for reliable, low-cost landing alongside the Jito bundle. Skipped for the low-tip fault so it
+      // can still fail the auction as intended; expired/compute faults still fail on this path too.
+      if (!this.config.ALLOW_DRY_RUN && args.fault !== 'low_tip') {
+        record.raw = { ...(record.raw ?? {}), stakedCoSubmission: true };
+        void this.connection
+          .sendRawTransaction(build.transactions[0]!.serialize(), { skipPreflight: true, maxRetries: 5 })
+          .catch((e) => logger.warn({ e: String(e) }, 'Staked co-submission failed (Jito bundle still in flight).'));
+      }
+
       if (!this.config.ALLOW_DRY_RUN) {
         await this.tracker.track(record);
       } else {

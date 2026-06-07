@@ -61,12 +61,14 @@ const ConfigSchema = z.object({
 
   // Tip policy. Final tips are dynamically selected from live data and network state;
   // these are guardrails only, never hardcoded submitted values.
-  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(3_000_000),
-  TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(8_000_000),
-  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(99),
+  // Landing comes from the staked sendTransaction co-submission + priority fee, so the Jito tip stays
+  // modest and dynamic (it's still recorded and AI-decided, and keeps the bundle a valid Jito submission).
+  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(200_000),
+  TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(2_000_000),
+  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(90),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
-  // Small priority fee (compute-unit price) in addition to the Jito tip, to aid inclusion.
-  PRIORITY_FEE_MICROLAMPORTS: z.coerce.number().int().nonnegative().default(50_000),
+  // Priority fee (compute-unit price) that drives reliable landing via the staked sendTransaction path.
+  PRIORITY_FEE_MICROLAMPORTS: z.coerce.number().int().nonnegative().default(3_000_000),
   // Blockhash commitment for built bundles. 'confirmed' is fresh yet recognized by the Jito leader's
   // bank (a too-fresh 'processed' blockhash can be rejected); never 'finalized' (too old).
   BLOCKHASH_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('confirmed'),
