@@ -287,7 +287,7 @@ evidence/     Generated lifecycle logs and submission evidence
 
 ## Design decisions & depth of integration
 
-- **Official jito-ts searcher SDK (gRPC)** for the deepest Jito integration — native bundle submission, scheduled-leader lookup, and real-time `onBundleResult`. A JSON-RPC transport sits behind the same `JitoBundleClient` interface as a resilient fallback ([`src/jito/jito-bundle-client.ts`](src/jito/jito-bundle-client.ts)).
+- **Dual Jito transport behind one `JitoBundleClient` interface** ([`src/jito/jito-bundle-client.ts`](src/jito/jito-bundle-client.ts)): the **JSON-RPC** adapter (default) lands bundles on the public endpoint with no searcher auth, and the **official jito-ts gRPC searcher SDK** adapter provides native submission + scheduled-leader + `onBundleResult` for Jito-approved searchers (set `JITO_AUTH_KEYPATH`). The evidence run uses JSON-RPC; switch with one env var. This abstraction is what let us flip transports the moment we found the public gRPC path doesn't forward without auth.
 - **Stream-first commitment** (Yellowstone slot-status) rather than RPC polling, matching the requirement and the architecture doc.
 - **LLM owns the decision, guardrails own safety** — meaningful AI with visible reasoning, never an unbounded model spending real funds.
 - **Provider-agnostic interfaces** (`JitoBundleClient`, `LlmProvider`) so transports and models are swappable without touching execution logic.

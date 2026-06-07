@@ -45,7 +45,10 @@ const ConfigSchema = z.object({
   // dedicated gRPC URL is not set explicitly.
   JITO_BLOCK_ENGINE_URL: z.string().url(),
   JITO_BLOCK_ENGINE_GRPC_URL: z.string().optional().default(''),
-  JITO_TRANSPORT: z.enum(['grpc', 'jsonrpc']).default('grpc'),
+  // JSON-RPC is the default: it lands bundles on the public endpoint with no searcher auth. The
+  // official jito-ts gRPC transport is implemented and selectable, but requires a Jito-approved
+  // searcher auth keypair (JITO_AUTH_KEYPATH) to actually forward bundles.
+  JITO_TRANSPORT: z.enum(['grpc', 'jsonrpc']).default('jsonrpc'),
   JITO_TIP_FLOOR_URL: z.string().url().default('https://bundles.jito.wtf/api/v1/bundles/tip_floor'),
   JITO_AUTH_UUID: z.string().optional().default(''),
   JITO_AUTH_KEYPATH: z.string().optional().default(''),
