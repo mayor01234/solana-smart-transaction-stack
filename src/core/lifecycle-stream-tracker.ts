@@ -117,22 +117,29 @@ export class LifecycleStreamTracker {
     return Promise.any(candidates);
   }
 
+  // HTTP getSignatureStatuses polling (no WebSocket) — a robust fallback to the Yellowstone slot-status
+  // stream that works even when the RPC WebSocket is unavailable. The stream remains the primary path.
   private waitForSignatureSubscription(signature: string, level: 'confirmed' | 'finalized', timeoutMs: number): Promise<CommitmentHit> {
+    const accepted = level === 'finalized' ? ['finalized'] : ['confirmed', 'finalized'];
     return new Promise<CommitmentHit>((resolve, reject) => {
-      let id: number | undefined;
-      const timer = setTimeout(() => {
-        if (id !== undefined) this.connection.removeSignatureListener(id).catch(() => undefined);
-        reject(new Error(`rpc ${level} subscription timeout ${timeoutMs}ms`));
-      }, timeoutMs);
-      id = this.connection.onSignature(
-        signature,
-        (result, context) => {
-          clearTimeout(timer);
-          if (result.err) reject(new Error(`tx error at ${level}: ${JSON.stringify(result.err)}`));
-          else resolve({ slot: context.slot, observedAt: Date.now(), source: 'rpc_signature_subscription' });
-        },
-        level,
-      );
+      const start = Date.now();
+      const poll = async () => {
+        try {
+          const { value } = await this.connection.getSignatureStatuses([signature]);
+          const v = value[0];
+          if (v) {
+            if (v.err) return reject(new Error(`tx error at ${level}: ${JSON.stringify(v.err)}`));
+            if (v.confirmationStatus && accepted.includes(v.confirmationStatus)) {
+              return resolve({ slot: v.slot, observedAt: Date.now(), source: 'rpc_signature_status' });
+            }
+          }
+        } catch {
+          /* transient RPC error; keep polling */
+        }
+        if (Date.now() - start > timeoutMs) return reject(new Error(`rpc ${level} poll timeout ${timeoutMs}ms`));
+        setTimeout(poll, 2000);
+      };
+      void poll();
     });
   }
 }
