@@ -39,12 +39,17 @@ export class LifecycleStreamTracker {
     const signature = record.signatures[0]!;
 
     try {
-      const processed = await this.waitForProcessed(record, this.config.LIFECYCLE_TIMEOUT_MS).catch(() => undefined);
+      // Race the Yellowstone tx stream (primary) against HTTP getSignatureStatuses polling, so a tx
+      // that landed is detected even if the stream dropped/missed it (e.g. around a reconnect).
+      const processed = await Promise.any([
+        this.waitForProcessed(record, this.config.LIFECYCLE_TIMEOUT_MS).then((p) => ({ ...p, source: 'yellowstone_tx_stream' as const })),
+        this.waitForProcessedViaPoll(signature, this.config.LIFECYCLE_TIMEOUT_MS),
+      ]).catch(() => undefined);
       if (!processed) return record; // never landed; orchestrator classifies via status/timeout
 
       record.processedAt = new Date(processed.observedAt).toISOString();
       record.processedSlot = processed.slot;
-      record.commitmentSource.processed = 'yellowstone_tx_stream';
+      record.commitmentSource.processed = processed.source;
 
       // A transaction that landed in a block but failed execution (e.g. compute exceeded) is a
       // failure, not a success — do not advance it to confirmed/finalized.
@@ -92,6 +97,30 @@ export class LifecycleStreamTracker {
         this.txStream.off('transaction', onTx);
       };
       this.txStream.on('transaction', onTx);
+    });
+  }
+
+  /** HTTP fallback for the processed stage: poll getSignatureStatuses until the tx appears on-chain. */
+  private waitForProcessedViaPoll(
+    signature: string,
+    timeoutMs: number,
+  ): Promise<{ slot: number; observedAt: number; err?: unknown; source: 'rpc_signature_status' }> {
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const poll = async () => {
+        try {
+          const { value } = await this.connection.getSignatureStatuses([signature]);
+          const v = value[0];
+          if (v && v.confirmationStatus) {
+            return resolve({ slot: v.slot, observedAt: Date.now(), err: v.err, source: 'rpc_signature_status' });
+          }
+        } catch {
+          /* transient RPC error; keep polling */
+        }
+        if (Date.now() - start > timeoutMs) return reject(new Error(`processed poll timeout ${timeoutMs}ms`));
+        setTimeout(poll, 2000);
+      };
+      void poll();
     });
   }
 
