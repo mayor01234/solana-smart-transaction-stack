@@ -1,6 +1,27 @@
 # AgentArena Smart Transaction Stack — Public Architecture Document
 
-> Publish this document as a public Notion, Google Doc, Figma page, or static webpage. Add that URL to `PUBLIC_ARCHITECTURE_URL` before final scoring.
+**Primary deliverable (GitHub):** https://github.com/mayor01234/solana-smart-transaction-stack
+
+This page is the public architecture document. The full project — source code, live evidence,
+screenshots, and security audit — lives in the GitHub repo above, which is the single source of truth.
+
+**Live mainnet-beta result:** 32 bundles · 24 finalized · P50 332 ms / P90 336 ms (processed→confirmed) ·
+5 deliberate fault cases all correctly classified · AI (Claude) reasoning + a real pump.fun live-event
+trigger on every record · all explorer-verifiable · 100/100 readiness.
+
+**Supporting materials (in the repo):**
+
+- 📄 README (overview + the 3 required answers): https://github.com/mayor01234/solana-smart-transaction-stack#readme
+- 🧾 Evidence folder: https://github.com/mayor01234/solana-smart-transaction-stack/tree/main/evidence
+    - Human-readable record table: https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/evidence/lifecycle-log.md
+    - Full records (JSON): https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/evidence/lifecycle-log.json
+    - Run summary (p50/p90, tips): https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/evidence/run-summary.json
+    - Verification report (100/100): https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/evidence/verification-report.md
+- 🖼️ Dashboard screenshots: https://github.com/mayor01234/solana-smart-transaction-stack/tree/main/docs/screenshots
+- ✅ Requirement → implementation mapping: https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/docs/SUPERTEAM_REQUIREMENT_MAPPING.md
+- 🔒 Security audit: https://github.com/mayor01234/solana-smart-transaction-stack/blob/main/SECURITY.md
+
+---
 
 ## Executive Summary
 
