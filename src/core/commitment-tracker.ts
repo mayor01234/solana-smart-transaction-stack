@@ -1,8 +1,16 @@
-import type { SlotStream } from '../geyser/slot-stream.js';
+import type { SlotUpdate } from '../geyser/slot-stream.js';
 
 export interface CommitmentObservation {
   slot: number;
   observedAt: number;
+}
+
+/** Minimal slot source the commitment tracker needs (satisfied by SlotStream and UnifiedYellowstoneStream). */
+export interface SlotSource {
+  getLatestConfirmedSlot(): number;
+  getLatestFinalizedSlot(): number;
+  on(event: 'slot', listener: (u: SlotUpdate) => void): unknown;
+  off(event: 'slot', listener: (u: SlotUpdate) => void): unknown;
 }
 
 /**
@@ -14,7 +22,7 @@ export interface CommitmentObservation {
  * slot has advanced past S" is a sound, stream-only landing signal — no RPC polling involved.
  */
 export class CommitmentTracker {
-  constructor(private readonly slotStream: SlotStream) {}
+  constructor(private readonly slotStream: SlotSource) {}
 
   waitForCommitment(slot: number, level: 'confirmed' | 'finalized', timeoutMs: number): Promise<CommitmentObservation> {
     const reached = () => (level === 'finalized' ? this.slotStream.getLatestFinalizedSlot() : this.slotStream.getLatestConfirmedSlot());

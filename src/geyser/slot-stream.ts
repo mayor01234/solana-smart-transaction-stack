@@ -14,7 +14,7 @@ export interface SlotUpdate {
 }
 
 /** Map a Yellowstone slot-status value (numeric CommitmentLevel or string) to a commitment. */
-function normalizeStatus(status: unknown): SlotCommitment {
+export function normalizeStatus(status: unknown): SlotCommitment {
   if (typeof status === 'number') {
     if (status >= 2) return 'finalized';
     if (status === 1) return 'confirmed';

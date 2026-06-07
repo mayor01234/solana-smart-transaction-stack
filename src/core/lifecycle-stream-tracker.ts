@@ -1,8 +1,16 @@
 import { Connection } from '@solana/web3.js';
 import type { AppConfig } from '../config.js';
 import type { BundleLifecycleRecord } from '../types.js';
-import { TransactionStream } from '../geyser/transaction-stream.js';
+import type { ObservedTransaction } from '../geyser/transaction-stream.js';
 import { CommitmentTracker } from './commitment-tracker.js';
+
+/** Minimal transaction-watch source (satisfied by TransactionStream and UnifiedYellowstoneStream). */
+export interface TxWatchSource {
+  watch(signature: string): void;
+  unwatch(signature: string): void;
+  on(event: 'transaction', listener: (t: ObservedTransaction) => void): unknown;
+  off(event: 'transaction', listener: (t: ObservedTransaction) => void): unknown;
+}
 
 interface CommitmentHit {
   slot: number;
@@ -21,7 +29,7 @@ export class LifecycleStreamTracker {
   constructor(
     private readonly config: AppConfig,
     private readonly connection: Connection,
-    private readonly txStream: TransactionStream,
+    private readonly txStream: TxWatchSource,
     private readonly commitmentTracker: CommitmentTracker,
   ) {}
 

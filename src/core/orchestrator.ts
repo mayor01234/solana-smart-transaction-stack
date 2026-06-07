@@ -1,11 +1,10 @@
-import { Connection } from '@solana/web3.js';
+import { Connection, type Keypair } from '@solana/web3.js';
 import { v4 as uuidv4 } from 'uuid';
 import type { AppConfig } from '../config.js';
 import { logger } from '../logger.js';
 import type { AgentDecisionTrace, BundleLifecycleRecord, FailureClass, NetworkSnapshot, TipSnapshot } from '../types.js';
 import { TransactionDecisionAgent } from '../agents/transaction-decision-agent.js';
-import { SlotStream } from '../geyser/slot-stream.js';
-import { TransactionStream } from '../geyser/transaction-stream.js';
+import { UnifiedYellowstoneStream } from '../geyser/unified-stream.js';
 import type { PumpfunTradeEvent } from '../geyser/pumpfun-event-stream.js';
 import { BundleBuilder } from '../jito/bundle-builder.js';
 import { DynamicTipEstimator } from '../jito/dynamic-tip-estimator.js';
@@ -47,14 +46,13 @@ export class BundleOrchestrator {
   private readonly tracker: LifecycleStreamTracker;
   private readonly bundleResults = new Map<string, BundleResultUpdate[]>();
   private unsubscribeBundleResults?: () => void;
-  private readonly payer;
 
   private constructor(
     private readonly config: AppConfig,
-    private readonly txStream: TransactionStream,
-    private readonly slotStream: SlotStream,
     private readonly store: LifecycleStore,
     private readonly jito: JitoBundleClient,
+    private readonly stream: UnifiedYellowstoneStream,
+    private readonly payer: Keypair,
   ) {
     this.connection = new Connection(config.SOLANA_RPC_URL, { commitment: 'processed', wsEndpoint: config.SOLANA_WS_URL });
     this.tipFeed = new TipAccountFeed(config, jito);
@@ -62,8 +60,7 @@ export class BundleOrchestrator {
     this.decisionAgent = new TransactionDecisionAgent(config);
     this.blockhashManager = new BlockhashManager(this.connection);
     this.leaderDetector = new LeaderWindowDetector(config, jito);
-    this.tracker = new LifecycleStreamTracker(config, this.connection, txStream, new CommitmentTracker(slotStream));
-    this.payer = loadKeypair(config.KEYPAIR_PATH);
+    this.tracker = new LifecycleStreamTracker(config, this.connection, stream, new CommitmentTracker(stream));
 
     if (jito.subscribeBundleResult) {
       this.unsubscribeBundleResults = jito.subscribeBundleResult(
@@ -77,13 +74,39 @@ export class BundleOrchestrator {
     }
   }
 
-  static async create(config: AppConfig, txStream: TransactionStream, slotStream: SlotStream, store: LifecycleStore): Promise<BundleOrchestrator> {
+  static async create(config: AppConfig, store: LifecycleStore): Promise<BundleOrchestrator> {
+    const payer = loadKeypair(config.KEYPAIR_PATH);
     const jito = await createJitoClient(config);
-    return new BundleOrchestrator(config, txStream, slotStream, store, jito);
+    const stream = new UnifiedYellowstoneStream(config, payer.publicKey.toBase58());
+    return new BundleOrchestrator(config, store, jito, stream, payer);
+  }
+
+  /** Start the single multiplexed Yellowstone stream (reconnects internally). */
+  startStreams(): void {
+    this.stream.start().catch((e) => logger.error({ e }, 'Unified stream stopped.'));
+  }
+
+  getLatestSlot(): number {
+    return this.stream.getLatestSlot();
+  }
+
+  /** Resolve once the slot stream is producing data, or throw after timeoutMs. */
+  async waitForFirstSlot(timeoutMs: number): Promise<void> {
+    const start = Date.now();
+    while (this.stream.getLatestSlot() <= 0) {
+      if (Date.now() - start > timeoutMs) throw new Error('Timed out waiting for Yellowstone slot stream.');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+
+  /** Next real pump.fun trade to react to, or undefined after timeoutMs. */
+  nextTrigger(timeoutMs: number): Promise<PumpfunTradeEvent | undefined> {
+    return this.stream.nextTrade(timeoutMs);
   }
 
   close(): void {
     this.unsubscribeBundleResults?.();
+    this.stream.stop();
     this.jito.close();
   }
 
@@ -261,7 +284,7 @@ export class BundleOrchestrator {
       previousFailure: record.failureClass,
       previousFailureMessage: record.failureMessage,
       retryAttempt: retryAttempt + 1,
-      currentSlotFromStream: this.slotStream.getLatestSlot() || args.currentSlotFromStream,
+      currentSlotFromStream: this.stream.getLatestSlot() || args.currentSlotFromStream,
     });
   }
 
