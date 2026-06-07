@@ -265,7 +265,7 @@ The `processed → confirmed` delta measures how quickly a transaction moves fro
 
 ### 2. Why should you never use finalized commitment when fetching a blockhash for a time-sensitive transaction?
 
-A finalized blockhash is older than the freshest processed/confirmed blockhash because finalization intentionally lags the head of the chain. For a time-sensitive Jito bundle, that lag consumes part of the validity window before the bundle is even built or submitted — increasing expiry risk, especially while waiting for a leader window or retrying. This repo fetches blockhashes at `processed` by default ([`src/core/blockhash-manager.ts`](src/core/blockhash-manager.ts)) and lets the AI agent rebuild with a fresh blockhash on expiry.
+A finalized blockhash is older than the freshest processed/confirmed blockhash because finalization intentionally lags the head of the chain. For a time-sensitive Jito bundle, that lag consumes part of the validity window before the bundle is even built or submitted — increasing expiry risk, especially while waiting for a leader window or retrying. This repo fetches blockhashes at `confirmed` ([`src/core/blockhash-manager.ts`](src/core/blockhash-manager.ts), `BLOCKHASH_COMMITMENT`) — fresh enough to maximize the validity window, yet already recognized by the Jito leader's bank (an over-fresh `processed` blockhash can be rejected by a leader that is a slot behind) — and **never** `finalized`. The AI agent rebuilds with a fresh blockhash on expiry.
 
 ### 3. What happens to your bundle if the Jito leader skips their slot?
 

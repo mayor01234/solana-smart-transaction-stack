@@ -27,7 +27,7 @@ export class BundleBuilder {
   buildDemoBundle(args: BuildBundleArgs): BundleBuildResult {
     const instructions: TransactionInstruction[] = [];
 
-    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: args.faultComputeExceeded ? 1 : 200_000 }));
+    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: args.faultComputeExceeded ? 1 : 60_000 }));
 
     if (args.computeUnitPriceMicroLamports && args.computeUnitPriceMicroLamports > 0) {
       instructions.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: args.computeUnitPriceMicroLamports }));

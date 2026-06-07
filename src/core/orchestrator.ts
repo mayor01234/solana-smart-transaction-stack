@@ -142,7 +142,7 @@ export class BundleOrchestrator {
     const blockhashData =
       args.fault === 'expired_blockhash'
         ? await this.blockhashManager.getIntentionallyExpiredBlockhash()
-        : await this.blockhashManager.getFreshBlockhash('processed');
+        : await this.blockhashManager.getFreshBlockhash(this.config.BLOCKHASH_COMMITMENT);
 
     const selectedTipLamports = args.fault === 'low_tip' ? Math.max(1, Math.floor(decision.selectedTipLamports * 0.01)) : decision.selectedTipLamports;
 
@@ -158,6 +158,7 @@ export class BundleOrchestrator {
       lastValidBlockHeight: blockhashData.lastValidBlockHeight,
       tipLamports: selectedTipLamports,
       tipAccount,
+      computeUnitPriceMicroLamports: this.config.PRIORITY_FEE_MICROLAMPORTS,
       faultComputeExceeded: args.fault === 'compute_exceeded',
     });
 

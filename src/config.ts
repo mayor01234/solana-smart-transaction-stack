@@ -58,10 +58,15 @@ const ConfigSchema = z.object({
 
   // Tip policy. Final tips are dynamically selected from live data and network state;
   // these are guardrails only, never hardcoded submitted values.
-  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(100_000),
+  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(1_000_000),
   TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(5_000_000),
-  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(95),
+  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(99),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
+  // Small priority fee (compute-unit price) in addition to the Jito tip, to aid inclusion.
+  PRIORITY_FEE_MICROLAMPORTS: z.coerce.number().int().nonnegative().default(50_000),
+  // Blockhash commitment for built bundles. 'confirmed' is fresh yet recognized by the Jito leader's
+  // bank (a too-fresh 'processed' blockhash can be rejected); never 'finalized' (too old).
+  BLOCKHASH_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('confirmed'),
 
   // Lifecycle windows.
   LIFECYCLE_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
