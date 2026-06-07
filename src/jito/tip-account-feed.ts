@@ -17,12 +17,16 @@ export class TipAccountFeed {
   async fetch(): Promise<TipSnapshot> {
     // Tip accounts are static per cluster — fetch once and reuse to save a rate-limited Jito call
     // per attempt. The tip-floor (the dynamic part) is always fetched live.
-    const [tipAccounts, tipFloor] = await Promise.all([
-      this.cachedTipAccounts ? Promise.resolve(this.cachedTipAccounts) : this.jito.getTipAccounts(),
-      this.fetchTipFloor(),
-    ]);
+    const tipAccounts = this.cachedTipAccounts ?? (await this.jito.getTipAccounts());
     this.cachedTipAccounts = tipAccounts;
-    const percentileLamports = this.normalizeTipFloor(tipFloor);
+    // Tip-floor is best-effort: a transient timeout must not crash a run. Fall back to the last
+    // known percentiles (then a sane default) so the AI still has live-ish data to reason over.
+    let percentileLamports: Record<string, number>;
+    try {
+      percentileLamports = this.normalizeTipFloor(await this.fetchTipFloor());
+    } catch {
+      percentileLamports = this.lastSnapshot?.percentileLamports ?? { '25': 1_000, '50': 2_000, '75': 5_000, '95': 50_000, '99': 100_000 };
+    }
     const snapshot: TipSnapshot = {
       fetchedAt: new Date().toISOString(),
       tipAccounts,
@@ -40,7 +44,7 @@ export class TipAccountFeed {
   }
 
   private async fetchTipFloor(): Promise<unknown> {
-    const res = await fetch(this.config.JITO_TIP_FLOOR_URL, { headers: { accept: 'application/json' } });
+    const res = await fetch(this.config.JITO_TIP_FLOOR_URL, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8_000) });
     if (!res.ok) throw new Error(`Jito tip floor HTTP ${res.status}: ${await res.text()}`);
     return res.json();
   }

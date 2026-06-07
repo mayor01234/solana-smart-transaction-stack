@@ -13,6 +13,9 @@ program
   .option('--fault <mode>', 'force a single fault mode: none|expired_blockhash|low_tip|compute_exceeded', 'none');
 program.parse(process.argv);
 
+// Safety net for a long run: a stray transient rejection (RPC/Jito network blip) must not crash it.
+process.on('unhandledRejection', (reason) => logger.warn({ reason: reason instanceof Error ? reason.message : String(reason) }, 'Unhandled rejection ignored to keep the run alive.'));
+
 const options = program.opts<{ count: string; failures: string; fault: FaultMode }>();
 const count = Number(options.count);
 const failures = Number(options.failures);
@@ -29,12 +32,17 @@ logger.info({ runId, count, failures, dryRun: config.ALLOW_DRY_RUN, reactToLiveE
 await orchestrator.waitForFirstSlot(30_000);
 
 for (let i = 0; i < count; i += 1) {
-  const fault = options.fault !== 'none' ? options.fault : shouldInjectFailure(i, failures);
-  // React to a real on-chain pump.fun trade when enabled; fall back to self-driven if none arrives.
-  const triggerEvent = config.REACT_TO_LIVE_EVENTS ? await orchestrator.nextTrigger(config.PUMPFUN_EVENT_TIMEOUT_MS) : undefined;
-  if (config.REACT_TO_LIVE_EVENTS && !triggerEvent) logger.warn({ i }, 'No pump.fun event within timeout; proceeding self-driven.');
-  logger.info({ i, fault, latestSlot: orchestrator.getLatestSlot(), triggerMint: triggerEvent?.mint }, 'Running bundle attempt.');
-  await orchestrator.runAttempt({ runId, index: i, fault, currentSlotFromStream: orchestrator.getLatestSlot(), triggerEvent });
+  try {
+    const fault = options.fault !== 'none' ? options.fault : shouldInjectFailure(i, failures);
+    // React to a real on-chain pump.fun trade when enabled; fall back to self-driven if none arrives.
+    const triggerEvent = config.REACT_TO_LIVE_EVENTS ? await orchestrator.nextTrigger(config.PUMPFUN_EVENT_TIMEOUT_MS) : undefined;
+    if (config.REACT_TO_LIVE_EVENTS && !triggerEvent) logger.warn({ i }, 'No pump.fun event within timeout; proceeding self-driven.');
+    logger.info({ i, fault, latestSlot: orchestrator.getLatestSlot(), triggerMint: triggerEvent?.mint }, 'Running bundle attempt.');
+    await orchestrator.runAttempt({ runId, index: i, fault, currentSlotFromStream: orchestrator.getLatestSlot(), triggerEvent });
+  } catch (e) {
+    // One attempt's transient error (e.g. an RPC/Jito timeout) must not end the whole run.
+    logger.error({ i, error: e instanceof Error ? e.message : String(e) }, 'Bundle attempt errored; continuing to next.');
+  }
 }
 
 store.exportJson();
