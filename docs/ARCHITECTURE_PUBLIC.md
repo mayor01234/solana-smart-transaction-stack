@@ -100,8 +100,8 @@ Files:
 
 ```text
 src/jito/jito-bundle-client.ts      (transport-agnostic interface)
-src/jito/jito-grpc-client.ts        (official jito-ts searcher SDK, default)
-src/jito/jito-jsonrpc-client.ts     (JSON-RPC fallback transport)
+src/jito/jito-jsonrpc-client.ts     (JSON-RPC transport, default — no searcher auth required)
+src/jito/jito-grpc-client.ts        (official jito-ts searcher SDK — for Jito-approved searchers)
 src/jito/jito-client-factory.ts
 src/jito/bundle-builder.ts
 src/jito/tip-account-feed.ts
@@ -115,8 +115,9 @@ Responsibilities:
 - Fetch live tip-floor data.
 - Detect the next scheduled Jito leader (`getNextScheduledLeader`).
 - Build versioned transactions with a Jito tip transfer.
-- Submit bundles via the official **jito-ts** searcher client (`sendBundle`), with a JSON-RPC
-  fallback selectable by `JITO_TRANSPORT`.
+- Submit bundles via JSON-RPC by default (lands on the public endpoint with no searcher auth), with
+  the official **jito-ts** searcher client (`sendBundle` + `onBundleResult`) selectable by
+  `JITO_TRANSPORT=grpc` for Jito-approved searchers.
 - Subscribe to real-time bundle results (`onBundleResult`) and fall back to inflight/final status.
 
 The orchestrator depends only on the `JitoBundleClient` interface, so the transport can be switched
@@ -188,7 +189,9 @@ Behavior:
 
 - Expired blockhash → AI can refresh blockhash and retry.
 - Fee too low → AI can reprice using fresh live tip data and retry.
-- Compute exceeded → AI aborts because the payload is invalid.
+- Compute exceeded → the payload is invalid, so the AI does not retry it as-is. The fault-injection
+  run deliberately forces this class to demonstrate detection: the transaction lands in a block but
+  reverts with `ComputationalBudgetExceeded`, and is classified `compute_exceeded` (not a success).
 - Leader skip/not forwarded → AI can hold for next favorable leader window.
 - Stream disconnect → AI can hold until observability recovers.
 
@@ -228,7 +231,7 @@ raw Jito status / live tip percentiles
 | Decision | Why it matters |
 |---|---|
 | SolInfra RPC + Yellowstone (sponsor) | The live infrastructure the stack runs on; low-latency stream observations without polling. |
-| Official jito-ts SDK (gRPC) | Deepest Jito integration (native bundle submission + result streaming); JSON-RPC kept as a resilient fallback. |
+| Dual Jito transport (JSON-RPC default + jito-ts gRPC) | JSON-RPC lands bundles on the public endpoint with no searcher auth (used for the evidence run); the official jito-ts searcher SDK (native submission + `onBundleResult` streaming) is selectable for Jito-approved searchers — both behind one interface. |
 | Yellowstone slot-status commitment | Confirmed/finalized are observed from the stream, not RPC polling, matching the challenge requirement. |
 | Dynamic tip estimator | Avoids hardcoded tips and adapts to live tip floors and network conditions. |
 | LLM agent + deterministic guardrails | The model owns the decision with visible reasoning; guardrails bound tips and retries for safety. No AI vendor is a bounty sponsor, so the LLM rivals nothing. |
