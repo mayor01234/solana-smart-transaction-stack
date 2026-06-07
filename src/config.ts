@@ -58,15 +58,15 @@ const ConfigSchema = z.object({
 
   // Tip policy. Final tips are dynamically selected from live data and network state;
   // these are guardrails only, never hardcoded submitted values.
-  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(1_000),
+  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(100_000),
   TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(5_000_000),
-  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(75),
+  TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(95),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
 
   // Lifecycle windows.
-  LIFECYCLE_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
-  CONFIRMED_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
-  FINALIZED_TIMEOUT_MS: z.coerce.number().int().positive().default(180_000),
+  LIFECYCLE_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
+  CONFIRMED_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  FINALIZED_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   // Confirm landing from the Yellowstone slot-status stream (true) in addition to the
   // RPC signature subscription. RPC polling is never used.
   USE_STREAM_COMMITMENT: envBool(true),
