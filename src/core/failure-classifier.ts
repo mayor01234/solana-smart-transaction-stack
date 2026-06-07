@@ -4,7 +4,7 @@ export class FailureClassifier {
     const normalizedMessage = this.normalize(messageOrError); const msg = normalizedMessage.toLowerCase();
     if (msg.includes('blockhash not found') || msg.includes('expired') || msg.includes('block height exceeded')) return { failureClass: 'expired_blockhash', normalizedMessage };
     if (msg.includes('tip too low') || msg.includes('fee too low') || msg.includes('priority fee') || msg.includes('insufficient tip')) return { failureClass: 'fee_too_low', normalizedMessage };
-    if (msg.includes('compute') && (msg.includes('exceeded') || msg.includes('budget'))) return { failureClass: 'compute_exceeded', normalizedMessage };
+    if ((msg.includes('compute') && (msg.includes('exceeded') || msg.includes('budget'))) || msg.includes('programfailedtocomplete') || msg.includes('exceeded cus')) return { failureClass: 'compute_exceeded', normalizedMessage };
     if (msg.includes('leader') && (msg.includes('skipped') || msg.includes('not forwarded') || msg.includes('missed'))) return { failureClass: 'leader_skipped_or_bundle_not_forwarded', normalizedMessage };
     if (msg.includes('stream') && (msg.includes('disconnect') || msg.includes('unavailable') || msg.includes('reset'))) return { failureClass: 'stream_disconnected', normalizedMessage };
     if (msg.includes('bundle') && (msg.includes('rejected') || msg.includes('failed') || msg.includes('dropped') || msg.includes('invalid'))) return { failureClass: 'bundle_failure', normalizedMessage };

@@ -159,10 +159,12 @@ export class BundleOrchestrator {
 
     const selectedTipLamports = args.fault === 'low_tip' ? Math.max(1, Math.floor(decision.selectedTipLamports * 0.01)) : decision.selectedTipLamports;
 
+    // Keep the memo short — memo CU scales with length, and an over-long memo exceeds the compute
+    // budget and fails the tx. Full run/attempt IDs live in the lifecycle record's own fields.
     const trigger = args.triggerEvent;
     const memo = trigger
-      ? `${this.config.DEMO_MEMO_PREFIX} run=${args.runId} index=${args.index} attempt=${attemptId} reacting-to-pumpfun mint=${trigger.mint} sig=${trigger.signature}`
-      : `${this.config.DEMO_MEMO_PREFIX} run=${args.runId} index=${args.index} attempt=${attemptId}`;
+      ? `${this.config.DEMO_MEMO_PREFIX} i=${args.index} mint=${trigger.mint}`
+      : `${this.config.DEMO_MEMO_PREFIX} i=${args.index}`;
 
     const build = this.builder.buildDemoBundle({
       payer: this.payer,
