@@ -5,3 +5,12 @@ dist/
 *.log
 coverage/
 keys/*.json
+
+# Generated evidence — committed deliberately only after a real (non-dry) run, via:
+#   git add -f evidence/lifecycle-log.json evidence/lifecycle-log.md evidence/run-summary.json evidence/verification-report.md evidence/scorecard.json
+evidence/lifecycle-log.jsonl
+evidence/lifecycle-log.json
+evidence/lifecycle-log.md
+evidence/run-summary.json
+evidence/scorecard.json
+evidence/verification-report.md
