@@ -27,7 +27,8 @@ export class BundleBuilder {
   buildDemoBundle(args: BuildBundleArgs): BundleBuildResult {
     const instructions: TransactionInstruction[] = [];
 
-    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: args.faultComputeExceeded ? 1 : 30_000 }));
+    // Memo CU scales with length (~480 CU/byte); 60k comfortably fits our mint-tagged memo (~31k CU).
+    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: args.faultComputeExceeded ? 1 : 60_000 }));
 
     if (args.computeUnitPriceMicroLamports && args.computeUnitPriceMicroLamports > 0) {
       instructions.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: args.computeUnitPriceMicroLamports }));

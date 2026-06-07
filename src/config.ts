@@ -68,7 +68,8 @@ const ConfigSchema = z.object({
   TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(90),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
   // Priority fee (compute-unit price) that drives reliable landing via the staked sendTransaction path.
-  PRIORITY_FEE_MICROLAMPORTS: z.coerce.number().int().nonnegative().default(3_000_000),
+  // ~1.5M microLamports x 60k CU limit = ~90k lamports priority fee (the amount verified to land fast).
+  PRIORITY_FEE_MICROLAMPORTS: z.coerce.number().int().nonnegative().default(1_500_000),
   // Blockhash commitment for built bundles. 'confirmed' is fresh yet recognized by the Jito leader's
   // bank (a too-fresh 'processed' blockhash can be rejected); never 'finalized' (too old).
   BLOCKHASH_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('confirmed'),
