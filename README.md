@@ -4,6 +4,8 @@
 
 Built for the **SuperteamNG × SolInfra Advanced Infrastructure Challenge**. This is deliberately **not** a happy-path demo: it ships controlled fault injection, an LLM agent that genuinely *owns* an operational decision with visible reasoning, live tip repricing from real tip-floor data, stream-based landing confirmation, judge-verifiable evidence export, and a first-place scoring gate.
 
+📄 **Public architecture document:** https://volcano-fowl-b96.notion.site/ARCHITECTURE_PUBLIC-378975109cda80988c39fe0a74103053
+
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![Solana](https://img.shields.io/badge/Solana-mainnet--beta-9945FF)
@@ -294,7 +296,7 @@ evidence/     Generated lifecycle logs and submission evidence
 ## Submission package
 
 - GitHub repo URL (this repo)
-- Public architecture document URL (hosted [`docs/ARCHITECTURE_PUBLIC.md`](docs/ARCHITECTURE_PUBLIC.md))
+- **Public architecture document:** https://volcano-fowl-b96.notion.site/ARCHITECTURE_PUBLIC-378975109cda80988c39fe0a74103053 (source: [`docs/ARCHITECTURE_PUBLIC.md`](docs/ARCHITECTURE_PUBLIC.md))
 - `evidence/lifecycle-log.json`, `lifecycle-log.md`, `run-summary.json`, `verification-report.md`
 - Explorer links / signatures / slot numbers from the evidence files
 - Optional: a short demo video of the live run, doctor, evidence export, and scoring
