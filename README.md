@@ -128,7 +128,7 @@ The bounty requires confirming landing via subscriptions — *"RPC polling alone
 
 - **Processed** is observed on the Yellowstone **transaction stream** ([`src/geyser/transaction-stream.ts`](src/geyser/transaction-stream.ts)).
 - **Confirmed / finalized** are derived from the Yellowstone **slot-status stream** ([`src/core/commitment-tracker.ts`](src/core/commitment-tracker.ts)): a tx in processed slot `S` is confirmed once the cluster confirms a slot ≥ `S`, and finalized once a slot ≥ `S` is rooted — both monotonic along the canonical fork.
-- An RPC signature *subscription* (`onSignature`, **not** polling) races the stream as a fallback; whichever resolves first wins, and the source is recorded in `commitmentSource`.
+- The Yellowstone slot-status stream is the **primary, required** path. Only as a **resilience fallback** (if the stream momentarily drops) does a lightweight `getSignatureStatuses` check race it — never the sole signal — and whichever source resolves first is recorded in `commitmentSource`.
 
 ## Failure handling & fault injection
 
@@ -184,7 +184,7 @@ SOLANA_RPC_URL=https://YOUR_SOLINFRA_RPC
 SOLANA_WS_URL=wss://YOUR_SOLINFRA_WS
 YELLOWSTONE_GRPC_URL=https://YOUR_SOLINFRA_YELLOWSTONE_GRPC
 YELLOWSTONE_TOKEN=...
-JITO_TRANSPORT=grpc
+JITO_TRANSPORT=jsonrpc
 JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
 JITO_TIP_FLOOR_URL=https://bundles.jito.wtf/api/v1/bundles/tip_floor
 KEYPAIR_PATH=./keys/payer.json
@@ -195,7 +195,7 @@ PUBLIC_ARCHITECTURE_URL=https://your-public-doc-url
 ALLOW_DRY_RUN=false
 ```
 
-> `AI_DECISION_MODE=heuristic` runs fully self-contained (no external API). If the jito-ts gRPC transport is unavailable in your environment, set `JITO_TRANSPORT=jsonrpc` — execution logic is identical.
+> `AI_DECISION_MODE=heuristic` runs fully self-contained (no external API). `JITO_TRANSPORT=jsonrpc` (default) lands bundles on the public endpoint with no searcher auth; Jito-approved searchers can set `JITO_TRANSPORT=grpc` for the native jito-ts SDK — execution logic is identical.
 
 Create/fund a keypair:
 

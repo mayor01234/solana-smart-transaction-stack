@@ -66,7 +66,7 @@ sequenceDiagram
     J->>E: bundle id, submitted_at, submitted_slot
     G->>S: observed transaction signature in processed stream
     S->>E: processed_at + processed_slot
-    S->>E: confirmed/finalized subscription events
+    S->>E: confirmed/finalized from slot-status stream
     E->>F: timeout/status/error context
     F->>A: classified failure
     A->>B: retry/hold/abort decision
@@ -92,7 +92,7 @@ Responsibilities:
 - Watch submitted signatures for processed landing.
 - Drive commitment confirmation from the slot-status stream (`src/core/commitment-tracker.ts`).
 - Reconnect automatically with ping and backpressure controls.
-- Never rely on RPC polling for landing confirmation (an RPC signature *subscription* is only a fallback).
+- Drive landing confirmation from the slot-status stream as the primary path; a lightweight `getSignatureStatuses` check is only a resilience fallback, never the sole signal.
 
 ### 2. Jito Bundle Layer
 
@@ -232,7 +232,7 @@ raw Jito status / live tip percentiles
 |---|---|
 | SolInfra RPC + Yellowstone (sponsor) | The live infrastructure the stack runs on; low-latency stream observations without polling. |
 | Dual Jito transport (JSON-RPC default + jito-ts gRPC) | JSON-RPC lands bundles on the public endpoint with no searcher auth (used for the evidence run); the official jito-ts searcher SDK (native submission + `onBundleResult` streaming) is selectable for Jito-approved searchers — both behind one interface. |
-| Yellowstone slot-status commitment | Confirmed/finalized are observed from the stream, not RPC polling, matching the challenge requirement. |
+| Yellowstone slot-status commitment | Confirmed/finalized are observed primarily from the slot-status stream (not RPC polling alone), matching the challenge requirement; a getSignatureStatuses check is a resilience-only fallback. |
 | Dynamic tip estimator | Avoids hardcoded tips and adapts to live tip floors and network conditions. |
 | LLM agent + deterministic guardrails | The model owns the decision with visible reasoning; guardrails bound tips and retries for safety. No AI vendor is a bounty sponsor, so the LLM rivals nothing. |
 | Separate AI layer | Makes the operational decision-maker auditable and replaceable (vendor-agnostic provider interface). |
