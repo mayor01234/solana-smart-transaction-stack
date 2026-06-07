@@ -301,6 +301,22 @@ evidence/     Generated lifecycle logs and submission evidence
 - Explorer links / signatures / slot numbers from the evidence files
 - Optional: a short demo video of the live run, doctor, evidence export, and scoring
 
+## Security
+
+A pre-submission security audit is documented in [`SECURITY.md`](SECURITY.md): no secrets are
+committed (verified across full git history), the autonomous agent's spend is hard-clamped to the
+configured tip/retry guardrails, there is no code-injection or path-traversal surface, and the
+dashboard binds to loopback only.
+
+**Note for judges on `npm audit`:** the 6 reported advisories (`bigint-buffer`, transitive `uuid`)
+are **transitive dependencies of the official, bounty-recommended Solana/Jito SDKs**
+(`@solana/web3.js`, `jito-ts`) — not of this project's own code — and ship with every Solana
+web3.js 1.x app. The vulnerable paths are unreachable in our usage (`uuid` is called only as `v4()`
+with no `buf`; our direct `uuid` is already the patched `11.1.1`) or have no upstream fix with a
+contained local-only impact (`bigint-buffer`). We deliberately **do not** run `npm audit fix --force`
+because its only resolution is to downgrade `jito-ts` `4.2.1 → 2.2.0`, breaking the sponsor-required
+SDK. Rationale and full table are in [`SECURITY.md`](SECURITY.md#dependency-advisories-npm-audit).
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
