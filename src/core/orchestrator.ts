@@ -53,13 +53,14 @@ export class BundleOrchestrator {
     private readonly jito: JitoBundleClient,
     private readonly stream: UnifiedYellowstoneStream,
     private readonly payer: Keypair,
+    private readonly leaderClient: JitoBundleClient,
   ) {
     this.connection = new Connection(config.SOLANA_RPC_URL, { commitment: 'processed', wsEndpoint: config.SOLANA_WS_URL });
     this.tipFeed = new TipAccountFeed(config, jito);
     this.tipEstimator = new DynamicTipEstimator(config);
     this.decisionAgent = new TransactionDecisionAgent(config);
     this.blockhashManager = new BlockhashManager(this.connection);
-    this.leaderDetector = new LeaderWindowDetector(config, jito);
+    this.leaderDetector = new LeaderWindowDetector(config, leaderClient);
     this.tracker = new LifecycleStreamTracker(config, this.connection, stream, new CommitmentTracker(stream));
 
     if (jito.subscribeBundleResult) {
@@ -77,8 +78,19 @@ export class BundleOrchestrator {
   static async create(config: AppConfig, store: LifecycleStore): Promise<BundleOrchestrator> {
     const payer = loadKeypair(config.KEYPAIR_PATH);
     const jito = await createJitoClient(config);
+    // Leader scheduling is a gRPC-only Jito read (404 over HTTP). Use a dedicated gRPC client for it
+    // even when bundles go over JSON-RPC, so leader-window detection works on the live run.
+    let leaderClient: JitoBundleClient = jito;
+    if (jito.transport !== 'grpc') {
+      try {
+        const { JitoGrpcClient } = await import('../jito/jito-grpc-client.js');
+        leaderClient = new JitoGrpcClient(config);
+      } catch (e) {
+        logger.warn({ e }, 'gRPC leader client unavailable; leader-window detection limited.');
+      }
+    }
     const stream = new UnifiedYellowstoneStream(config, payer.publicKey.toBase58());
-    return new BundleOrchestrator(config, store, jito, stream, payer);
+    return new BundleOrchestrator(config, store, jito, stream, payer, leaderClient);
   }
 
   /** Start the single multiplexed Yellowstone stream (reconnects internally). */
@@ -108,6 +120,7 @@ export class BundleOrchestrator {
     this.unsubscribeBundleResults?.();
     this.stream.stop();
     this.jito.close();
+    if (this.leaderClient !== this.jito) this.leaderClient.close();
   }
 
   async runAttempt(args: RunAttemptArgs): Promise<BundleLifecycleRecord> {

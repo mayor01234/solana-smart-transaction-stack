@@ -22,8 +22,14 @@ try {
   const feed = new TipAccountFeed(config, jito);
   const snap = await feed.fetch();
   checks.push({ name: 'Live tip-floor data reachable', status: Object.keys(snap.percentileLamports).length ? 'pass' : 'fail', detail: JSON.stringify(snap.percentileLamports) });
-  const leader = await jito.getNextScheduledLeader().catch((e) => ({ error: String(e) }));
-  checks.push({ name: 'Jito leader schedule reachable', status: 'error' in leader ? 'warn' : 'pass', detail: JSON.stringify(leader) });
+  // Leader scheduling is gRPC-only; use a gRPC client for this check even when bundles use JSON-RPC.
+  let leaderClient = jito;
+  if (jito.transport !== 'grpc') {
+    try { const { JitoGrpcClient } = await import('../jito/jito-grpc-client.js'); leaderClient = new JitoGrpcClient(config); } catch { /* keep jito */ }
+  }
+  const leader = await leaderClient.getNextScheduledLeader().catch((e) => ({ error: String(e) }));
+  checks.push({ name: 'Jito leader schedule reachable (gRPC)', status: 'error' in leader ? 'warn' : 'pass', detail: JSON.stringify(leader) });
+  if (leaderClient !== jito) leaderClient.close();
 } catch (e) {
   checks.push({ name: 'Jito connectivity', status: 'fail', detail: String(e) });
 }
