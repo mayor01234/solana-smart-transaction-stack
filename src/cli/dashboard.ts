@@ -32,12 +32,24 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (url === '/api/lifecycle') {
-    // Prefer real evidence; fall back to the example so the page always renders.
+    // Prefer the live .jsonl (appended per attempt during a run) so the page updates in real time;
+    // then the final .json; then the example so the page always renders.
+    const jsonl = path.join(evidenceDir, 'lifecycle-log.jsonl');
     const real = path.join(evidenceDir, 'lifecycle-log.json');
     const example = path.join(evidenceDir, 'lifecycle-log.example.json');
-    const data = fs.existsSync(real) ? readJson(real, []) : readJson(example, []);
+    let records: unknown = [];
+    let source = 'example';
+    if (fs.existsSync(jsonl)) {
+      records = fs.readFileSync(jsonl, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+      source = 'live';
+    } else if (fs.existsSync(real)) {
+      records = readJson(real, []);
+      source = 'live';
+    } else {
+      records = readJson(example, []);
+    }
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ source: fs.existsSync(real) ? 'live' : 'example', records: data }));
+    res.end(JSON.stringify({ source, records }));
     return;
   }
   if (url === '/api/summary') {

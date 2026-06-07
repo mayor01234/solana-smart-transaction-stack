@@ -57,7 +57,7 @@
     <h2>Bundle lifecycle records</h2>
     <div id="tablewrap"><div class="empty">loading…</div></div>
   </div>
-  <div class="foot">Read-only view of <span class="mono">evidence/</span>. Click a row for AI reasoning + the real pump.fun event it reacted to.</div>
+  <div class="foot">Read-only view of <span class="mono">evidence/</span> · updates live every 5s during a run. Click a row for AI reasoning + the real pump.fun event it reacted to.</div>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -99,7 +99,7 @@ function rowHtml(r, i){
   </td></tr>`;
 }
 
-(async function(){
+async function load(){
   let lifecycle={records:[],source:'example'}, summary={};
   try { lifecycle = await (await fetch('/api/lifecycle')).json(); } catch {}
   try { summary = await (await fetch('/api/summary')).json(); } catch {}
@@ -127,7 +127,10 @@ function rowHtml(r, i){
     <th>#</th><th>intent</th><th>status</th><th>tip</th><th>sub slot</th><th>conf slot</th><th>final slot</th><th>P→C ms</th><th>AI</th><th>tx</th>
   </tr></thead><tbody>${recs.map(rowHtml).join('')}</tbody></table>` : '<div class="empty">No records yet — run <span class="mono">npm run challenge:first-place</span>.</div>';
   document.querySelectorAll('tr.row').forEach(tr=>tr.addEventListener('click',()=>{ const d=$('d'+tr.dataset.i); d.style.display = d.style.display==='none'?'table-row':'none'; }));
-})();
+}
+load();
+// Live: refresh every 5s so records appear during a run. Pause while a detail row is expanded.
+setInterval(()=>{ if(!document.querySelector('tr.detail[style*="table-row"]')) load(); }, 5000);
 </script>
 </body>
 </html>
