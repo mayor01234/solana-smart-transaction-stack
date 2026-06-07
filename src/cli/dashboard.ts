@@ -60,6 +60,9 @@ const server = http.createServer((req, res) => {
   res.writeHead(404).end('not found');
 });
 
-server.listen(PORT, () => {
+// Bind to loopback only: this is a local read-only viewer, never meant to be reachable from the
+// LAN. Without an explicit host, Node listens on all interfaces (0.0.0.0) — exposing the evidence
+// to anyone on the same network. 127.0.0.1 keeps it on this machine.
+server.listen(PORT, '127.0.0.1', () => {
   logger.info({ url: `http://localhost:${PORT}` }, 'AgentArena dashboard running. Open it in your browser. Ctrl-C to stop.');
 });
