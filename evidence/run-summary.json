@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-06-07T00:48:58.044Z",
+  "totalRecords": 3,
+  "finalizedCount": 3,
+  "failureCount": 0,
+  "failureClasses": {},
+  "averageProcessedToConfirmedMs": 1050,
+  "p50ProcessedToConfirmedMs": 1050,
+  "p90ProcessedToConfirmedMs": 1050,
+  "averageSubmittedToFinalizedMs": 7800,
+  "p50SubmittedToFinalizedMs": 7800,
+  "p90SubmittedToFinalizedMs": 7800,
+  "uniqueTipValues": [
+    3530,
+    4436
+  ],
+  "minTipLamports": 3530,
+  "maxTipLamports": 4436,
+  "aiDecisionFamilies": [
+    "retry",
+    "timing",
+    "tip"
+  ]
+}
