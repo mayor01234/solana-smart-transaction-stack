@@ -10,6 +10,15 @@ dotenv.config({ override: true });
 // `.url()` validation before they are filled in.
 const optionalUrl = () => z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional());
 
+// z.coerce.boolean() uses JS Boolean(), so the string "false" coerces to TRUE. Parse env booleans
+// explicitly so ALLOW_DRY_RUN=false (and friends) behave as written.
+const envBool = (def: boolean) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null || v === '') return def;
+    if (typeof v === 'boolean') return v;
+    return ['true', '1', 'yes', 'on'].includes(String(v).trim().toLowerCase());
+  }, z.boolean());
+
 /**
  * Configuration for the AgentArena smart transaction stack.
  *
@@ -60,7 +69,7 @@ const ConfigSchema = z.object({
   FINALIZED_TIMEOUT_MS: z.coerce.number().int().positive().default(180_000),
   // Confirm landing from the Yellowstone slot-status stream (true) in addition to the
   // RPC signature subscription. RPC polling is never used.
-  USE_STREAM_COMMITMENT: z.coerce.boolean().default(true),
+  USE_STREAM_COMMITMENT: envBool(true),
   EVIDENCE_DIR: z.string().default('./evidence'),
 
   // AI agent. The agent owns the operational decision; the LLM produces the reasoning and
@@ -72,7 +81,7 @@ const ConfigSchema = z.object({
   AI_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(1_024),
   AI_RISK_TOLERANCE: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
   AI_MAX_RETRY_ATTEMPTS: z.coerce.number().int().min(0).max(10).default(3),
-  AI_ALLOW_HOLD: z.coerce.boolean().default(true),
+  AI_ALLOW_HOLD: envBool(true),
   AI_MIN_LANDING_PROBABILITY: z.coerce.number().min(0).max(1).default(0.72),
 
   // First-place scoring gate.
@@ -80,12 +89,12 @@ const ConfigSchema = z.object({
   FIRST_PLACE_MIN_SCORE: z.coerce.number().int().min(0).max(100).default(94),
   FIRST_PLACE_TARGET_RECORDS: z.coerce.number().int().min(10).default(25),
   FIRST_PLACE_TARGET_FAILURES: z.coerce.number().int().min(2).default(5),
-  REQUIRE_PUBLIC_ARCHITECTURE_URL_FOR_SCORE: z.coerce.boolean().default(true),
+  REQUIRE_PUBLIC_ARCHITECTURE_URL_FOR_SCORE: envBool(true),
 
   // Real live-event source: decode pump.fun trades from the Yellowstone stream and use them to
   // trigger bundle submissions (read-only; we never trade). REACT_TO_LIVE_EVENTS=false reverts to a
   // self-driven loop.
-  REACT_TO_LIVE_EVENTS: z.coerce.boolean().default(true),
+  REACT_TO_LIVE_EVENTS: envBool(true),
   PUMPFUN_PROGRAM_ID: z.string().default('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'),
   PUMPFUN_EVENT_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
 
@@ -94,8 +103,8 @@ const ConfigSchema = z.object({
   DEMO_BUNDLE_TX_COUNT: z.coerce.number().int().min(1).max(5).default(1),
 
   // Local testing only. Do not submit dry-run evidence.
-  ALLOW_DRY_RUN: z.coerce.boolean().default(false),
-  ALLOW_EXAMPLE_EVIDENCE: z.coerce.boolean().default(false),
+  ALLOW_DRY_RUN: envBool(false),
+  ALLOW_EXAMPLE_EVIDENCE: envBool(false),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
