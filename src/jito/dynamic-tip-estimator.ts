@@ -30,7 +30,9 @@ export class DynamicTipEstimator {
     const slots = network.slotsUntilJitoLeader;
     const leaderUrgencyMultiplier = slots === null ? 1.15 : slots <= 1 ? 1.25 : slots <= 3 ? 1.1 : 0.95;
     const raw = Math.round(baseLamports * congestionMultiplier * leaderUrgencyMultiplier);
-    const lamports = Math.max(this.config.TIP_MIN_LAMPORTS, Math.min(this.config.TIP_MAX_LAMPORTS, raw));
+    // Escalate the floor each retry so repeated misses outbid a competitive auction (3M -> 6M -> 8M...).
+    const retryFloor = this.config.TIP_MIN_LAMPORTS * (1 + retryAttempt);
+    const lamports = Math.max(this.config.TIP_MIN_LAMPORTS, Math.min(this.config.TIP_MAX_LAMPORTS, Math.max(raw, retryFloor)));
     return {
       lamports,
       baseLamports,

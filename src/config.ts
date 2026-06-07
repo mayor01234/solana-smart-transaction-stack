@@ -61,8 +61,8 @@ const ConfigSchema = z.object({
 
   // Tip policy. Final tips are dynamically selected from live data and network state;
   // these are guardrails only, never hardcoded submitted values.
-  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(2_000_000),
-  TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(5_000_000),
+  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(3_000_000),
+  TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(8_000_000),
   TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(99),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
   // Small priority fee (compute-unit price) in addition to the Jito tip, to aid inclusion.
@@ -85,10 +85,10 @@ const ConfigSchema = z.object({
   AI_DECISION_MODE: z.enum(['heuristic', 'llm']).default('llm'),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
-  AI_LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  AI_LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   AI_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(1_024),
   AI_RISK_TOLERANCE: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
-  AI_MAX_RETRY_ATTEMPTS: z.coerce.number().int().min(0).max(10).default(3),
+  AI_MAX_RETRY_ATTEMPTS: z.coerce.number().int().min(0).max(10).default(2),
   AI_ALLOW_HOLD: envBool(true),
   AI_MIN_LANDING_PROBABILITY: z.coerce.number().min(0).max(1).default(0.72),
 

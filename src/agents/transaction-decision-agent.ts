@@ -79,8 +79,11 @@ export class TransactionDecisionAgent {
           heuristicSignalProviders: modules,
         });
         return this.fromLlm(result, input, modules, signals);
-      } catch (error) {
-        logger.warn({ error }, 'LLM decision failed; falling back to heuristic engine for this attempt.');
+      } catch (error: any) {
+        logger.warn(
+          { message: error?.message ?? String(error), status: error?.status, name: error?.name },
+          'LLM decision failed; falling back to heuristic engine for this attempt.',
+        );
       }
     }
     return this.heuristicDecision(input, modules, signals, landingHeuristic);
