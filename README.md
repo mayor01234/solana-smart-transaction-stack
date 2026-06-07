@@ -295,11 +295,27 @@ evidence/     Generated lifecycle logs and submission evidence
 
 ## Submission package
 
-- GitHub repo URL (this repo)
+Everything a judge needs, all reachable from this repo. **Live mainnet-beta run: 32 bundles,
+24 finalized, P50 332 ms / P90 336 ms processed→confirmed, 5 deliberate fault cases all correctly
+classified, AI (Claude) reasoning + a real pump.fun live-event trigger on every record.**
+
+**Core**
+- **GitHub repo:** https://github.com/mayor01234/solana-smart-transaction-stack (this repo — the deliverable)
 - **Public architecture document:** https://volcano-fowl-b96.notion.site/ARCHITECTURE_PUBLIC-378975109cda80988c39fe0a74103053 (source: [`docs/ARCHITECTURE_PUBLIC.md`](docs/ARCHITECTURE_PUBLIC.md))
-- `evidence/lifecycle-log.json`, `lifecycle-log.md`, `run-summary.json`, `verification-report.md`
-- Explorer links / signatures / slot numbers from the evidence files
-- Optional: a short demo video of the live run, doctor, evidence export, and scoring
+
+**Evidence (generated from the live run)**
+- [`evidence/lifecycle-log.md`](evidence/lifecycle-log.md) — human-readable record table
+- [`evidence/lifecycle-log.json`](evidence/lifecycle-log.json) — full machine-readable records (primary artifact)
+- [`evidence/run-summary.json`](evidence/run-summary.json) — counts, unique tips, p50/p90 latency
+- [`evidence/verification-report.md`](evidence/verification-report.md) — pass/fail against the evidence policy (100/100)
+- [`evidence/scorecard.json`](evidence/scorecard.json) — first-place gate result
+- Explorer links / signatures / slot numbers are embedded in every record above
+
+**Supporting**
+- [Dashboard screenshots](docs/screenshots/) — overview, AI reasoning expanded, all-finalized table
+- [`docs/SUPERTEAM_REQUIREMENT_MAPPING.md`](docs/SUPERTEAM_REQUIREMENT_MAPPING.md) — each bounty requirement → where it's implemented
+- [`SECURITY.md`](SECURITY.md) — pre-submission security audit + dependency posture
+- README answers to the three required questions: [above](#readme-questions-required-answers)
 
 ## Security
 
