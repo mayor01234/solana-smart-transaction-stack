@@ -61,7 +61,7 @@ const ConfigSchema = z.object({
 
   // Tip policy. Final tips are dynamically selected from live data and network state;
   // these are guardrails only, never hardcoded submitted values.
-  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(1_000_000),
+  TIP_MIN_LAMPORTS: z.coerce.number().int().nonnegative().default(2_000_000),
   TIP_MAX_LAMPORTS: z.coerce.number().int().positive().default(5_000_000),
   TIP_PERCENTILE_TARGET: z.coerce.number().int().min(1).max(99).default(99),
   TIP_CONGESTION_MULTIPLIER_MAX: z.coerce.number().positive().default(2.25),
