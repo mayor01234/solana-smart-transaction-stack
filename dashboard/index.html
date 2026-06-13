@@ -3,110 +3,294 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgentArena — Smart Transaction Stack</title>
+<title>AgentArena — Smart Transaction Observatory</title>
 <style>
-  :root { --bg:#0b0f17; --panel:#121826; --panel2:#0e1420; --line:#1f2a3a; --txt:#e6edf3; --mut:#8aa0b6; --grn:#3fb950; --red:#f85149; --yel:#d29922; --pur:#a371f7; --blu:#58a6ff; }
+  :root {
+    --bg:#070a11; --bg2:#0a0e17; --panel:#0e1422; --panel2:#0b101b; --line:#1b2536;
+    --line2:#243149; --txt:#e9eef6; --mut:#8597ad; --dim:#5e6f86;
+    --grn:#43e08a; --red:#ff6b6b; --yel:#ffb454; --pur:#b388ff; --blu:#5cc8ff; --cyan:#43e0d0;
+    --glow:0 0 0 1px rgba(99,140,255,.08), 0 8px 30px -12px rgba(0,0,0,.7);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif; }
-  header { padding:20px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0; font-weight:650; }
-  .tag { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--mut); }
-  .src-live { color:var(--grn); border-color:var(--grn); }
-  .src-example { color:var(--yel); border-color:var(--yel); }
-  main { padding:24px; max-width:1200px; margin:0 auto; }
-  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:22px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
-  .card .k { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
-  .card .v { font-size:26px; font-weight:680; margin-top:6px; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:22px; }
-  @media (max-width:820px){ .grid2 { grid-template-columns:1fr; } }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
-  .panel h2 { font-size:13px; color:var(--mut); margin:0 0 12px; text-transform:uppercase; letter-spacing:.04em; }
+  html,body { height:100%; }
+  body {
+    margin:0; color:var(--txt);
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(99,102,241,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 0%, rgba(67,224,208,.07), transparent 55%),
+      linear-gradient(180deg, #070a11 0%, #080c14 100%);
+    font:14px/1.55 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,monospace; }
+  a { color:var(--blu); text-decoration:none; } a:hover { text-decoration:underline; }
+
+  header {
+    position:sticky; top:0; z-index:20; padding:16px 26px;
+    border-bottom:1px solid var(--line);
+    background:rgba(8,12,20,.78); backdrop-filter:blur(10px);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .logo { width:30px; height:30px; border-radius:8px; flex:0 0 auto;
+    background:linear-gradient(135deg,#b388ff,#5cc8ff 55%,#43e0d0);
+    box-shadow:0 0 22px -4px rgba(124,160,255,.7); position:relative; }
+  .logo::after{ content:""; position:absolute; inset:6px; border-radius:4px; background:#070a11; }
+  header h1 { font-size:16px; margin:0; font-weight:680; letter-spacing:.2px; }
+  header .sub { color:var(--dim); font-size:12px; }
+  .spacer { flex:1; }
+  .pulse { display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:600;
+    padding:4px 11px; border-radius:999px; border:1px solid var(--line2); color:var(--mut); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); }
+  .pulse.live .dot { background:var(--grn); box-shadow:0 0 0 0 rgba(67,224,138,.7); animation:p 1.8s infinite; }
+  .pulse.live { color:var(--grn); border-color:rgba(67,224,138,.35); }
+  .pulse.example { color:var(--yel); border-color:rgba(255,180,84,.35); }
+  @keyframes p { 0%{box-shadow:0 0 0 0 rgba(67,224,138,.6)} 70%{box-shadow:0 0 0 7px rgba(67,224,138,0)} 100%{box-shadow:0 0 0 0 rgba(67,224,138,0)} }
+
+  main { padding:26px; max-width:1240px; margin:0 auto; }
+
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+  .card { position:relative; background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:14px; padding:16px 18px; overflow:hidden; box-shadow:var(--glow); }
+  .card::before { content:""; position:absolute; left:0; top:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--pur),var(--blu),var(--cyan)); opacity:.85; }
+  .card .k { color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .card .v { font-size:30px; font-weight:740; margin-top:7px; line-height:1;
+    background:linear-gradient(180deg,#fff,#b9c6db); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .card .v.accent { background:linear-gradient(120deg,var(--cyan),var(--blu)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+  @media (max-width:860px){ .grid2 { grid-template-columns:1fr; } }
+  .panel { background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:var(--glow); }
+  .panel h2 { font-size:12px; color:var(--mut); margin:0 0 14px; text-transform:uppercase; letter-spacing:.06em; display:flex; align-items:center; gap:8px; }
+  .panel h2 .bar { width:3px; height:13px; border-radius:2px; background:linear-gradient(var(--pur),var(--blu)); }
+
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  th { color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
-  tr.row:hover { background:var(--panel2); cursor:pointer; }
-  .pill { font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); }
-  .ok { color:var(--grn); border-color:#1c3a25; background:#0f1f15; }
-  .fail { color:var(--red); border-color:#3a1f1f; background:#1f1212; }
-  .llm { color:var(--pur); border-color:#2c2247; background:#160f25; }
-  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
-  a { color:var(--blu); text-decoration:none; }
-  a:hover { text-decoration:underline; }
-  .detail { background:var(--panel2); }
-  .detail td { white-space:normal; color:var(--mut); }
-  .detail b { color:var(--txt); }
-  .empty { color:var(--mut); padding:40px; text-align:center; }
-  svg text { fill:var(--mut); font-size:10px; }
-  .foot { color:var(--mut); font-size:12px; margin-top:18px; }
+  th,td { text-align:left; padding:10px 11px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; }
+  tr.row { transition:background .12s; }
+  tr.row:hover { background:rgba(92,200,255,.06); cursor:pointer; }
+  tr.row:hover .analyze { color:var(--blu); border-color:var(--line2); }
+  .analyze { font-size:11px; color:var(--dim); border:1px solid var(--line); border-radius:7px; padding:3px 9px; transition:.12s; }
+  .pill { font-size:11px; padding:2px 9px; border-radius:999px; border:1px solid var(--line); font-weight:600; }
+  .ok { color:var(--grn); border-color:rgba(67,224,138,.3); background:rgba(67,224,138,.08); }
+  .fail { color:var(--red); border-color:rgba(255,107,107,.3); background:rgba(255,107,107,.08); }
+  .pend { color:var(--yel); border-color:rgba(255,180,84,.3); background:rgba(255,180,84,.07); }
+  .llm { color:var(--pur); border-color:rgba(179,136,255,.3); background:rgba(179,136,255,.08); }
+  .empty { color:var(--mut); padding:46px; text-align:center; }
+  svg text { fill:var(--dim); font-size:10px; }
+  .foot { color:var(--dim); font-size:12px; margin-top:20px; }
+
+  /* ---- modal ---- */
+  .overlay { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+    background:rgba(4,7,12,.66); backdrop-filter:blur(6px); padding:24px; }
+  .overlay.open { display:flex; }
+  .modal { width:min(760px,100%); max-height:88vh; display:flex; flex-direction:column;
+    background:linear-gradient(180deg,#0d1320,#0a0f1a); border:1px solid var(--line2);
+    border-radius:16px; box-shadow:0 30px 80px -20px rgba(0,0,0,.8); overflow:hidden; }
+  .modal .mhead { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  .modal .mhead .t { font-size:14px; font-weight:680; }
+  .modal .mhead .s { font-size:12px; color:var(--mut); }
+  .x { margin-left:auto; cursor:pointer; color:var(--mut); border:1px solid var(--line); border-radius:8px;
+    padding:5px 11px; font-size:12px; } .x:hover{ color:var(--txt); border-color:var(--line2); }
+  .mbody { padding:18px 20px; overflow:auto; }
+  .sec { margin-bottom:16px; }
+  .sec .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--blu); margin-bottom:7px; font-weight:600; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-size:12.5px; }
+  .kv .key { color:var(--dim); } .kv .val { color:var(--txt); }
+  .reason { background:rgba(179,136,255,.06); border:1px solid rgba(179,136,255,.18); border-radius:10px;
+    padding:12px 14px; font-size:13px; line-height:1.6; color:#dfe6f2; white-space:pre-wrap; }
+  .trade { background:rgba(67,224,208,.06); border:1px solid rgba(67,224,208,.18); border-radius:10px; padding:10px 13px; font-size:12.5px; }
+
+  .chat { border-top:1px solid var(--line); display:flex; flex-direction:column; }
+  .chatlog { padding:14px 20px; display:flex; flex-direction:column; gap:10px; max-height:260px; overflow:auto; }
+  .msg { max-width:86%; padding:9px 13px; border-radius:12px; font-size:13px; line-height:1.5; white-space:pre-wrap; }
+  .msg.u { align-self:flex-end; background:linear-gradient(135deg,#2a3da8,#3457c9); color:#eef2ff; border-bottom-right-radius:4px; }
+  .msg.a { align-self:flex-start; background:#111a2b; border:1px solid var(--line2); color:#dbe4f2; border-bottom-left-radius:4px; }
+  .msg.a.think { color:var(--mut); font-style:italic; }
+  .hint { color:var(--dim); font-size:12px; padding:0 20px 6px; }
+  .chips { display:flex; gap:7px; flex-wrap:wrap; padding:0 20px 10px; }
+  .chip { font-size:11.5px; color:var(--mut); border:1px solid var(--line); border-radius:999px; padding:4px 10px; cursor:pointer; transition:.12s; }
+  .chip:hover { color:var(--txt); border-color:var(--blu); }
+  .inbar { display:flex; gap:9px; padding:12px 20px 18px; border-top:1px solid var(--line); }
+  .inbar input { flex:1; background:#0a0f1a; border:1px solid var(--line2); color:var(--txt);
+    border-radius:10px; padding:11px 13px; font-size:13px; outline:none; }
+  .inbar input:focus { border-color:var(--blu); box-shadow:0 0 0 3px rgba(92,200,255,.12); }
+  .inbar button { background:linear-gradient(135deg,#5cc8ff,#7aa2ff); color:#05101f; font-weight:700;
+    border:none; border-radius:10px; padding:0 18px; cursor:pointer; font-size:13px; }
+  .inbar button:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 </head>
 <body>
 <header>
-  <h1>AgentArena · Smart Transaction Stack</h1>
-  <span id="src" class="tag">loading…</span>
-  <span class="tag">Yellowstone → Jito → AI → lifecycle evidence</span>
+  <div class="logo"></div>
+  <div>
+    <h1>AgentArena · Smart Transaction Observatory</h1>
+    <div class="sub">Yellowstone gRPC → Jito leader window → Claude AI agent → stream-confirmed lifecycle evidence</div>
+  </div>
+  <div class="spacer"></div>
+  <span id="src" class="pulse"><span class="dot"></span><span id="srctxt">loading…</span></span>
 </header>
 <main>
   <div class="cards" id="cards"></div>
   <div class="grid2">
-    <div class="panel"><h2>Tip per attempt (lamports)</h2><div id="tipchart"></div></div>
-    <div class="panel"><h2>processed → confirmed latency (ms)</h2><div id="latchart"></div></div>
+    <div class="panel"><h2><span class="bar"></span>Tip per attempt (lamports)</h2><div id="tipchart"></div></div>
+    <div class="panel"><h2><span class="bar"></span>processed → confirmed latency (ms)</h2><div id="latchart"></div></div>
   </div>
   <div class="panel">
-    <h2>Bundle lifecycle records</h2>
+    <h2><span class="bar"></span>Bundle lifecycle records · click any row to ask the AI</h2>
     <div id="tablewrap"><div class="empty">loading…</div></div>
   </div>
-  <div class="foot">Read-only view of <span class="mono">evidence/</span> · updates live every 5s during a run. Click a row for AI reasoning + the real pump.fun event it reacted to.</div>
+  <div class="foot">Read-only view of <span class="mono">evidence/</span> · auto-refreshes every 5s during a run · click a row to open live AI analysis + ask questions about that transaction.</div>
 </main>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mhead">
+      <div>
+        <div class="t" id="m-title">AI Analysis</div>
+        <div class="s" id="m-sub"></div>
+      </div>
+      <div class="x" id="m-close">Close ✕</div>
+    </div>
+    <div class="mbody" id="m-body"></div>
+    <div class="chat">
+      <div class="chatlog" id="chatlog"></div>
+      <div class="chips" id="chips"></div>
+      <div class="inbar">
+        <input id="ask" type="text" placeholder="Ask a question about this transaction…" autocomplete="off" />
+        <button id="send">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const num = (n) => (n ?? n === 0) ? Number(n).toLocaleString() : '—';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short = (s, n=8) => s ? (String(s).length > n*2 ? String(s).slice(0,n)+'…'+String(s).slice(-4) : s) : '—';
 function pct(arr, p){ if(!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); const i=Math.min(s.length-1, Math.floor((p/100)*s.length)); return s[i]; }
 
-function bars(el, vals, color){
-  const W=el.clientWidth||520, H=160, pad=24; const max=Math.max(1,...vals);
+let RECORDS = [];
+let modalOpen = false;
+let activeRecord = null;
+
+function bars(el, vals, c1, c2){
+  const W=el.clientWidth||520, H=170, pad=26; const max=Math.max(1,...vals);
   const bw = vals.length ? (W-pad)/vals.length : 0;
-  let svg = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}">`;
-  vals.forEach((v,i)=>{ const h=Math.max(1,(v/max)*(H-pad-14)); const x=pad+i*bw+1; const y=H-pad-h;
-    svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${h.toFixed(1)}" fill="${color}" rx="2"><title>#${i}: ${v}</title></rect>`; });
-  svg += `<text x="2" y="12">max ${num(max)}</text><text x="2" y="${H-6}">0</text></svg>`;
+  const gid = 'g'+Math.random().toString(36).slice(2,7);
+  let svg = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>`;
+  svg += `<line x1="${pad}" y1="${H-pad}" x2="${W}" y2="${H-pad}" stroke="#1b2536"/>`;
+  vals.forEach((v,i)=>{ const h=Math.max(2,(v/max)*(H-pad-16)); const x=pad+i*bw+1; const y=H-pad-h;
+    svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(1.5,bw-2.5).toFixed(1)}" height="${h.toFixed(1)}" fill="url(#${gid})" rx="2.5"><title>#${i}: ${num(v)}</title></rect>`; });
+  svg += `<text x="2" y="13">max ${num(max)}</text><text x="2" y="${H-8}">0</text></svg>`;
   el.innerHTML = vals.length ? svg : '<div class="empty">no data</div>';
+}
+
+function statusPill(r){
+  if(r.failureClass) return `<span class="pill fail">${esc(r.failureClass)}</span>`;
+  if(r.finalizedAt) return `<span class="pill ok">finalized</span>`;
+  if(r.confirmedAt) return `<span class="pill ok">confirmed</span>`;
+  return `<span class="pill pend">pending</span>`;
 }
 
 function rowHtml(r, i){
   const ai = r.agentDecision||{};
-  const engine = ai.engine ? `<span class="pill llm">${ai.engine}${ai.model?(' · '+ai.model):''}</span>` : '';
-  const status = r.failureClass ? `<span class="pill fail">${r.failureClass}</span>` : (r.finalizedAt?`<span class="pill ok">finalized</span>`:(r.confirmedAt?`<span class="pill ok">confirmed</span>`:'<span class="pill">pending</span>'));
-  const ev = r.raw && r.raw.pumpfunTriggerEvent;
+  const engine = ai.engine ? `<span class="pill llm">${esc(ai.engine)}${ai.model?(' · '+esc(ai.model)):''}</span>` : '';
   return `<tr class="row" data-i="${i}">
-    <td>${i}</td>
-    <td>${r.intent||'normal'}</td>
-    <td>${status}</td>
+    <td class="mono">${i}</td>
+    <td>${esc(r.intent||'normal')}</td>
+    <td>${statusPill(r)}</td>
     <td class="mono">${num(r.tipLamports)}</td>
     <td class="mono">${r.submittedSlot??'—'}</td>
     <td class="mono">${r.confirmedSlot??'—'}</td>
     <td class="mono">${r.finalizedSlot??'—'}</td>
     <td class="mono">${r.latencyMs&&r.latencyMs.processedToConfirmed!=null?r.latencyMs.processedToConfirmed:'—'}</td>
-    <td>${ai.action||'—'} ${engine}</td>
-    <td>${r.explorerLinks&&r.explorerLinks[0]?`<a href="${r.explorerLinks[0]}" target="_blank" rel="noopener">explorer ↗</a>`:'—'}</td>
-  </tr>
-  <tr class="detail" id="d${i}" style="display:none"><td colspan="10">
-    <b>AI reasoning:</b> ${(ai.reasoning||ai.reasonSummary||'—')}<br>
-    <b>Bundle:</b> <span class="mono">${short(r.bundleId,10)}</span> &nbsp; <b>Sig:</b> <span class="mono">${short(r.signatures&&r.signatures[0],10)}</span> &nbsp; <b>Tip acct:</b> <span class="mono">${short(r.tipAccount,6)}</span><br>
-    ${ev?`<b>Reacted to live pump.fun trade:</b> ${ev.isBuy?'BUY':'SELL'} mint <span class="mono">${short(ev.mint,6)}</span>, ${num(ev.solLamports)} lamports, slot ${ev.slot}`:''}
-  </td></tr>`;
+    <td>${esc(ai.action||'—')} ${engine}</td>
+    <td>${r.explorerLinks&&r.explorerLinks[0]?`<a href="${esc(r.explorerLinks[0])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">explorer ↗</a>`:'—'}</td>
+    <td><span class="analyze">✦ analyze</span></td>
+  </tr>`;
 }
+
+function openModal(i){
+  const r = RECORDS[i]; if(!r) return;
+  activeRecord = r; modalOpen = true;
+  const ai = r.agentDecision||{};
+  $('m-title').textContent = `AI Analysis · Record #${i}`;
+  $('m-sub').innerHTML = `${esc(r.intent||'normal')} · ${statusPill(r)}`;
+  const ev = r.raw && r.raw.pumpfunTriggerEvent;
+  const lat = r.latencyMs||{};
+  const kv = (k,v)=>`<span class="key">${k}</span><span class="val mono">${v}</span>`;
+  $('m-body').innerHTML = `
+    <div class="sec"><div class="lbl">Lifecycle</div><div class="kv">
+      ${kv('submitted slot', r.submittedSlot??'—')}
+      ${kv('processed slot', r.processedSlot??'—')}
+      ${kv('confirmed slot', r.confirmedSlot??'—')}
+      ${kv('finalized slot', r.finalizedSlot??'—')}
+      ${kv('processed→confirmed', lat.processedToConfirmed!=null?lat.processedToConfirmed+' ms':'—')}
+      ${kv('submitted→finalized', lat.submittedToFinalized!=null?lat.submittedToFinalized+' ms':'—')}
+    </div></div>
+    <div class="sec"><div class="lbl">Bundle</div><div class="kv">
+      ${kv('tip', num(r.tipLamports)+' lamports')}
+      ${kv('tip account', esc(short(r.tipAccount,6)))}
+      ${kv('bundle id', esc(short(r.bundleId,10)))}
+      ${kv('signature', esc(short(r.signatures&&r.signatures[0],10)))}
+      ${kv('engine', esc(ai.engine||'—')+(ai.model?(' · '+esc(ai.model)):''))}
+      ${kv('landing prob.', ai.landingProbabilityEstimate!=null?ai.landingProbabilityEstimate:'—')}
+    </div></div>
+    <div class="sec"><div class="lbl">AI reasoning (recorded live at submission)</div>
+      <div class="reason">${esc(ai.reasoning||ai.reasonSummary||'No reasoning recorded.')}</div></div>
+    ${ev?`<div class="sec"><div class="lbl">Reacted to live pump.fun trade</div>
+      <div class="trade mono">${ev.isBuy?'BUY':'SELL'} · mint ${esc(short(ev.mint,6))} · ${num(ev.solLamports)} lamports · slot ${esc(ev.slot)}</div></div>`:''}
+    ${r.explorerLinks&&r.explorerLinks[0]?`<div class="sec"><a href="${esc(r.explorerLinks[0])}" target="_blank" rel="noopener">Verify on Solana Explorer ↗</a></div>`:''}
+  `;
+  $('chatlog').innerHTML = `<div class="msg a">Ask me anything about this transaction — what happened, why it ${r.failureClass?'failed':'landed'}, the tip decision, or the latency. I read the full record live.</div>`;
+  const chips = r.failureClass
+    ? ['Why did this fail?', 'Was this failure intentional?', 'What would you do differently?']
+    : ['Why did the AI choose this tip?', 'Is this latency healthy?', 'Walk me through the lifecycle.'];
+  $('chips').innerHTML = chips.map(c=>`<span class="chip">${esc(c)}</span>`).join('');
+  document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{ $('ask').value=ch.textContent; ask(); }));
+  $('overlay').classList.add('open');
+  setTimeout(()=>$('ask').focus(), 50);
+}
+function closeModal(){ modalOpen=false; activeRecord=null; $('overlay').classList.remove('open'); }
+
+async function ask(){
+  const q = $('ask').value.trim(); if(!q || !activeRecord) return;
+  $('ask').value=''; $('send').disabled=true;
+  const log = $('chatlog');
+  log.insertAdjacentHTML('beforeend', `<div class="msg u">${esc(q)}</div>`);
+  const thinking = document.createElement('div');
+  thinking.className='msg a think'; thinking.textContent='Analyzing the record…';
+  log.appendChild(thinking); log.scrollTop=log.scrollHeight;
+  try {
+    const res = await fetch('/api/ask', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ question:q, record:activeRecord }) });
+    const data = await res.json();
+    thinking.classList.remove('think'); thinking.textContent = data.answer || 'No answer.';
+  } catch(e) {
+    thinking.classList.remove('think'); thinking.textContent = 'Request failed: '+(e&&e.message||e);
+  }
+  $('send').disabled=false; log.scrollTop=log.scrollHeight; $('ask').focus();
+}
+
+$('send').addEventListener('click', ask);
+$('ask').addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
+$('m-close').addEventListener('click', closeModal);
+$('overlay').addEventListener('click', (e)=>{ if(e.target===$('overlay')) closeModal(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modalOpen) closeModal(); });
 
 async function load(){
   let lifecycle={records:[],source:'example'}, summary={};
   try { lifecycle = await (await fetch('/api/lifecycle')).json(); } catch {}
   try { summary = await (await fetch('/api/summary')).json(); } catch {}
-  const recs = Array.isArray(lifecycle.records)? lifecycle.records : [];
+  RECORDS = Array.isArray(lifecycle.records)? lifecycle.records : [];
+  const recs = RECORDS;
 
-  const srcEl=$('src'); srcEl.textContent = lifecycle.source==='live'?'LIVE EVIDENCE':'EXAMPLE DATA (run challenge to generate)';
-  srcEl.className = 'tag '+(lifecycle.source==='live'?'src-live':'src-example');
+  const live = lifecycle.source==='live';
+  $('srctxt').textContent = live ? 'LIVE EVIDENCE' : 'EXAMPLE DATA — run the challenge to generate';
+  $('src').className = 'pulse '+(live?'live':'example');
 
   const failures = recs.filter(r=>r.failureClass).length;
   const finalized = recs.filter(r=>r.finalizedAt).length;
@@ -115,22 +299,22 @@ async function load(){
   const p50 = summary.p50ProcessedToConfirmedMs ?? pct(ptc,50);
   const p90 = summary.p90ProcessedToConfirmedMs ?? pct(ptc,90);
   const cards = [
-    ['Records', recs.length], ['Failures', failures], ['Finalized', finalized],
-    ['Unique tips', uniqueTips], ['p50 P→C ms', p50??'—'], ['p90 P→C ms', p90??'—'],
+    ['Records', recs.length, false], ['Failures', failures, false], ['Finalized', finalized, true],
+    ['Unique tips', uniqueTips, false], ['p50 P→C ms', p50??'—', true], ['p90 P→C ms', p90??'—', true],
   ];
-  $('cards').innerHTML = cards.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${num(v)}</div></div>`).join('');
+  $('cards').innerHTML = cards.map(([k,v,a])=>`<div class="card"><div class="k">${k}</div><div class="v${a?' accent':''}">${num(v)}</div></div>`).join('');
 
-  bars($('tipchart'), recs.map(r=>Number(r.tipLamports)||0), '#a371f7');
-  bars($('latchart'), ptc, '#58a6ff');
+  bars($('tipchart'), recs.map(r=>Number(r.tipLamports)||0), '#c9a3ff', '#7a4fd6');
+  bars($('latchart'), ptc, '#8ad8ff', '#3a8fd0');
 
   $('tablewrap').innerHTML = recs.length ? `<table><thead><tr>
-    <th>#</th><th>intent</th><th>status</th><th>tip</th><th>sub slot</th><th>conf slot</th><th>final slot</th><th>P→C ms</th><th>AI</th><th>tx</th>
+    <th>#</th><th>intent</th><th>status</th><th>tip</th><th>sub slot</th><th>conf slot</th><th>final slot</th><th>P→C ms</th><th>AI</th><th>tx</th><th></th>
   </tr></thead><tbody>${recs.map(rowHtml).join('')}</tbody></table>` : '<div class="empty">No records yet — run <span class="mono">npm run challenge:first-place</span>.</div>';
-  document.querySelectorAll('tr.row').forEach(tr=>tr.addEventListener('click',()=>{ const d=$('d'+tr.dataset.i); d.style.display = d.style.display==='none'?'table-row':'none'; }));
+  document.querySelectorAll('tr.row').forEach(tr=>tr.addEventListener('click',()=>openModal(Number(tr.dataset.i))));
 }
 load();
-// Live: refresh every 5s so records appear during a run. Pause while a detail row is expanded.
-setInterval(()=>{ if(!document.querySelector('tr.detail[style*="table-row"]')) load(); }, 5000);
+// Live refresh, but never while the AI modal is open (so chat state is preserved).
+setInterval(()=>{ if(!modalOpen) load(); }, 5000);
 </script>
 </body>
 </html>
